@@ -14,6 +14,7 @@ router.use(authorizeRoles('teacher'));
 
 // Sessions
 router.get('/sessions', sessionController.listSessions);
+router.put('/session/:id/meet-link', sessionController.updateMeetLink);
 router.get('/sessions/:id', sessionController.getSessionById);
 router.post('/sessions', sessionController.createSession);
 router.put('/sessions/:id', sessionController.updateSession);

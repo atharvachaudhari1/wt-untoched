@@ -38,6 +38,10 @@ const sessionSchema = new mongoose.Schema(
       trim: true,
       default: null,
     },
+    isLive: {
+      type: Boolean,
+      default: false,
+    },
     liveSessionStatus: {
       type: String,
       enum: ['scheduled', 'live', 'completed', 'cancelled'],

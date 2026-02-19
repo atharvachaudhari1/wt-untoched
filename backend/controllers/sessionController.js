@@ -48,10 +48,49 @@ exports.updateSession = async (req, res, next) => {
     if (!session) {
       return res.status(404).json({ success: false, message: 'Session not found.' });
     }
-    const allowed = ['title', 'description', 'students', 'scheduledAt', 'duration', 'meetLink', 'liveSessionStatus', 'status', 'mentoringNotes'];
+    const allowed = ['title', 'description', 'students', 'scheduledAt', 'duration', 'meetLink', 'isLive', 'liveSessionStatus', 'status', 'mentoringNotes'];
     allowed.forEach((key) => {
       if (req.body[key] !== undefined) session[key] = req.body[key];
     });
+    await session.save();
+    const populated = await Session.findById(session._id)
+      .populate('teacher', 'user department designation')
+      .populate('students', 'user rollNo department');
+    res.json({ success: true, session: populated });
+  } catch (err) {
+    next(err);
+  }
+};
+
+/**
+ * PUT /api/teacher/session/:id/meet-link - Teacher uploads Meet link and sets session live.
+ */
+exports.updateMeetLink = async (req, res, next) => {
+  try {
+    const teacherProfile = await TeacherProfile.findOne({ user: req.user.id });
+    if (!teacherProfile) {
+      return res.status(403).json({ success: false, message: 'Teacher profile not found.' });
+    }
+    const sessionId = req.params.id && String(req.params.id).trim();
+    if (!sessionId) {
+      return res.status(400).json({ success: false, message: 'Session ID is required.' });
+    }
+    let session;
+    try {
+      session = await Session.findOne({ _id: sessionId, teacher: teacherProfile._id });
+    } catch (e) {
+      return res.status(400).json({ success: false, message: 'Invalid session ID format.' });
+    }
+    if (!session) {
+      return res.status(404).json({ success: false, message: 'Session not found or you do not own this session.' });
+    }
+    const body = req.body || {};
+    const meetLink = typeof body.meetLink === 'string' ? body.meetLink.trim() : '';
+    if (!meetLink) {
+      return res.status(400).json({ success: false, message: 'meetLink is required in the request body.' });
+    }
+    session.meetLink = meetLink.trim();
+    session.isLive = true;
     await session.save();
     const populated = await Session.findById(session._id)
       .populate('teacher', 'user department designation')

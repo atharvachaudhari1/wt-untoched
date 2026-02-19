@@ -49,7 +49,9 @@
       options.body = typeof body === 'string' ? body : JSON.stringify(body);
     }
     return fetch(url, options).then(function (res) {
-      return res.json().catch(function () { return {}; }).then(function (data) {
+      return res.text().then(function (text) {
+        var data = {};
+        try { data = text ? JSON.parse(text) : {}; } catch (_) {}
         if (res.status === 401) {
           if (!isLoginRequest) {
             clearAuth();
@@ -60,7 +62,10 @@
           }
           return Promise.reject(new Error(data.message || 'Invalid email or password'));
         }
-        if (!res.ok) return Promise.reject(new Error(data.message || 'Request failed'));
+        if (!res.ok) {
+          var msg = data.message || ('Request failed (' + res.status + ')');
+          return Promise.reject(new Error(msg));
+        }
         return data;
       });
     });
@@ -80,14 +85,53 @@
     delete: function (path) { return request('DELETE', path); },
     auth: {
       login: function (email, password, role) { return request('POST', '/auth/login', { email: email, password: password, role: role }); },
-      me: function () { return request('GET', '/auth/me'); }
+      me: function () { return request('GET', '/auth/me'); },
+      updateMe: function (body) { return request('PATCH', '/auth/me', body); }
     },
     student: {
       dashboard: function () { return request('GET', '/student/dashboard'); },
+      liveSessions: function () { return request('GET', '/student/live-sessions'); },
       sessionsUpcoming: function () { return request('GET', '/student/sessions/upcoming'); },
       meetLink: function (sessionId) { return request('GET', '/student/sessions/' + sessionId + '/meet-link'); },
+      mentor: function () { return request('GET', '/student/mentor'); },
+      attendance: function () { return request('GET', '/student/attendance'); },
       announcements: function () { return request('GET', '/student/announcements'); },
       notifications: function () { return request('GET', '/notifications'); }
+    },
+    teacher: {
+      sessions: function () { return request('GET', '/teacher/sessions'); },
+      createSession: function (body) { return request('POST', '/teacher/sessions', body); },
+      updateMeetLink: function (sessionId, body) { return request('PUT', '/teacher/session/' + sessionId + '/meet-link', body); },
+      updateSession: function (sessionId, body) { return request('PUT', '/teacher/sessions/' + sessionId, body); }
+    },
+    notifications: {
+      list: function () { return request('GET', '/notifications'); },
+      markRead: function (id) { return request('PATCH', '/notifications/' + id + '/read'); },
+      markAllRead: function () { return request('PATCH', '/notifications/read-all'); }
+    },
+    admin: {
+      students: function (query) {
+        var q = query || {};
+        var params = new URLSearchParams();
+        if (q.department) params.set('department', q.department);
+        if (q.year) params.set('year', q.year);
+        if (q.limit) params.set('limit', q.limit);
+        var path = '/admin/students';
+        if (params.toString()) path += '?' + params.toString();
+        return request('GET', path);
+      },
+      teachers: function (query) {
+        var q = query || {};
+        var params = new URLSearchParams();
+        if (q.department) params.set('department', q.department);
+        if (q.limit) params.set('limit', q.limit);
+        var path = '/admin/teachers';
+        if (params.toString()) path += '?' + params.toString();
+        return request('GET', path);
+      },
+      assignMentor: function (studentId, mentorId) {
+        return request('POST', '/admin/assign-mentor', { studentId: studentId, mentorId: mentorId });
+      }
     }
   };
 })(typeof window !== 'undefined' ? window : this);

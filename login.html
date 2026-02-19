@@ -32,6 +32,7 @@
     </div>
     <h1>Sign in</h1>
     <p>Enter your credentials to access the dashboard.</p>
+    <p style="font-size: 0.8rem; color: #64748b; margin-bottom: 1rem;">Students: <strong>rollno@crce.edu.in</strong> / roll no (or rollno@ecs.edu / student123 if from attendance import). Role = Student. Admin: admin@ecs.edu / admin123.</p>
     <form id="login-form">
       <label for="email">Email</label>
       <input type="email" id="email" name="email" required placeholder="you@college.edu" autocomplete="email">
@@ -60,8 +61,8 @@
       form.addEventListener('submit', async function (e) {
         e.preventDefault();
         errorEl.textContent = '';
-        const email = document.getElementById('email').value.trim();
-        const password = document.getElementById('password').value;
+        const email = document.getElementById('email').value.trim().toLowerCase();
+        const password = document.getElementById('password').value.trim();
         const role = document.getElementById('role').value;
         try {
           const data = await ECS_API.auth.login(email, password, role);

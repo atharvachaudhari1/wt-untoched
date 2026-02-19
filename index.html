@@ -11,10 +11,10 @@
 </head>
 <body>
   <div class="app">
-    <!-- LEFT SIDEBAR -->
+    <!-- LEFT SIDEBAR (BrightPath-style: narrow, icon-only) -->
     <aside class="sidebar">
       <div class="sidebar-brand">
-        <span class="sidebar-logo">◆</span>
+        <span class="sidebar-logo-dot"></span>
         <span class="sidebar-title">Mentor</span>
       </div>
       <nav class="sidebar-nav">
@@ -58,6 +58,15 @@
           </svg>
           <span class="nav-label">Settings</span>
         </a>
+        <a href="#" class="nav-item nav-item--admin" id="nav-admin-mentors" data-page="admin-mentors" aria-label="Assign mentors" style="display: none;">
+          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+            <circle cx="9" cy="7" r="4"/>
+            <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+            <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+          </svg>
+          <span class="nav-label">Assign mentors</span>
+        </a>
       </nav>
       <div class="sidebar-footer">
         <a href="#" class="nav-item" aria-label="Help">
@@ -76,95 +85,221 @@
       <!-- TOP NAVBAR -->
       <header class="navbar">
         <div class="navbar-search">
+          <input type="search" placeholder="Search" class="search-input" aria-label="Search">
           <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <circle cx="11" cy="11" r="8"/>
             <line x1="21" y1="21" x2="16.65" y2="16.65"/>
           </svg>
-          <input type="search" placeholder="Search sessions, mentors..." class="search-input" aria-label="Search">
         </div>
         <div class="navbar-actions">
-          <span class="user-name" id="nav-user-name"></span>
-          <button type="button" class="btn-icon btn-notify" id="btn-notify" aria-label="Notifications">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
-              <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
-            </svg>
-            <span class="notify-dot" id="notify-dot"></span>
-          </button>
+          <div class="notify-wrap">
+            <button type="button" class="btn-icon btn-notify" id="btn-notify" aria-label="Notifications">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+                <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+              </svg>
+              <span class="notify-dot" id="notify-dot"></span>
+            </button>
+            <div class="notify-panel" id="notify-panel" aria-hidden="true">
+              <div class="notify-panel-header">
+                <span>Notifications</span>
+                <button type="button" class="notify-mark-read" id="notify-mark-read">Mark all read</button>
+              </div>
+              <div class="notify-panel-list" id="notify-panel-list"></div>
+            </div>
+          </div>
           <a href="#" id="btn-logout" class="btn-logout">Logout</a>
-          <div class="profile-avatar" aria-label="Profile">
-            <img id="nav-avatar" src="https://api.dicebear.com/7.x/avataaars/svg?seed=user" alt="Profile" width="40" height="40">
+          <div class="profile-block">
+            <div class="profile-avatar" aria-label="Profile">
+              <img id="nav-avatar" src="" alt="Profile" width="44" height="44">
+            </div>
+            <div class="profile-info">
+              <span class="user-name" id="nav-user-name">User</span>
+              <span class="user-handle" id="nav-user-handle">@student</span>
+            </div>
           </div>
         </div>
       </header>
 
       <!-- MAIN SECTION -->
       <div class="content">
-        <h1 class="page-title">My Mentoring</h1>
+        <!-- Panel: Mentoring (default) -->
+        <div class="content-panel active" id="panel-mentoring" data-page="mentoring">
+        <h1 class="page-title">My courses</h1>
+        <div class="filter-pills" id="filter-pills">
+          <button type="button" class="pill pill--active" data-filter="">All courses</button>
+          <button type="button" class="pill" data-filter="BSESC">BSESC</button>
+          <button type="button" class="pill" data-filter="PCPEC">PCPEC</button>
+          <button type="button" class="pill" data-filter="MDC">MDC</button>
+          <button type="button" class="pill" data-filter="SC">SC</button>
+          <button type="button" class="pill" data-filter="HSSM">HSSM</button>
+          <button type="button" class="pill" data-filter="DM">DM</button>
+          <button type="button" class="pill" data-filter="HR">HR</button>
+          <button type="button" class="pill" data-filter="BC">BC</button>
+        </div>
 
-        <!-- ROW 1: Gradient mentoring cards (filled by API) -->
-        <section class="cards-row" id="cards-row">
-          <article class="mentor-card mentor-card--design" data-session-id="">
-            <span class="card-tag">Session</span>
-            <h2 class="card-title">Loading...</h2>
-            <div class="card-progress">
-              <div class="progress-bar" style="--progress: 0%"></div>
-              <span class="progress-text">—</span>
-            </div>
-            <div class="card-avatars"></div>
-            <button type="button" class="btn-continue" data-session-id="">Continue</button>
-          </article>
-          <article class="mentor-card mentor-card--business" data-session-id="">
-            <span class="card-tag">Session</span>
-            <h2 class="card-title">Loading...</h2>
-            <div class="card-progress">
-              <div class="progress-bar" style="--progress: 0%"></div>
-              <span class="progress-text">—</span>
-            </div>
-            <div class="card-avatars"></div>
-            <button type="button" class="btn-continue" data-session-id="">Continue</button>
-          </article>
-          <article class="mentor-card mentor-card--programming" data-session-id="">
-            <span class="card-tag">Session</span>
-            <h2 class="card-title">Loading...</h2>
-            <div class="card-progress">
-              <div class="progress-bar" style="--progress: 0%"></div>
-              <span class="progress-text">—</span>
-            </div>
-            <div class="card-avatars"></div>
-            <button type="button" class="btn-continue" data-session-id="">Continue</button>
-          </article>
+        <!-- Student: JOIN MEETING block (live sessions with Google Meet link) -->
+        <section class="live-session-block" id="live-session-block">
+          <h2 class="panel-title live-session-heading">Join your meeting</h2>
+          <div id="live-session-list">
+            <p class="text-muted" id="live-session-placeholder">No live meetings right now. When your mentor adds a Google Meet link to a session, it will appear here and in My next lessons.</p>
+          </div>
         </section>
 
-        <!-- ROW 2: Sessions table + Recommendation card -->
-        <section class="bottom-row">
+        <!-- Teacher: form to add Google Meet link to a session -->
+        <section class="teacher-meet-link-section" id="teacher-meet-link-section" style="display: none;">
           <div class="sessions-panel">
-            <h2 class="panel-title">My next sessions</h2>
-            <div class="table-wrap">
-              <table class="sessions-table">
+            <h2 class="panel-title">Add Google Meet link to session</h2>
+            <form id="teacher-meet-link-form" class="meet-link-form">
+              <label for="meet-session-select">Session</label>
+              <select id="meet-session-select" required>
+                <option value="">Loading sessions...</option>
+              </select>
+              <label for="meet-link-input">Google Meet link</label>
+              <input type="url" id="meet-link-input" placeholder="https://meet.google.com/xxxx-xxxx-xxx" required>
+              <button type="submit" class="btn-continue">Save link & set live</button>
+            </form>
+            <p id="meet-link-message" class="text-muted" style="margin-top: 0.5rem;"></p>
+          </div>
+        </section>
+
+        <!-- ROW 1: SEM-IV course cards (actual courses) -->
+        <section class="cards-row cards-row--grid" id="cards-row" aria-label="SEM-IV courses"></section>
+
+        <!-- ROW 2: My next lessons (list) + Recommendation card -->
+        <section class="bottom-row">
+          <div class="lessons-panel">
+            <div class="panel-header">
+              <h2 class="panel-title">My next lessons</h2>
+              <a href="#" class="view-all-link">View all lessons</a>
+            </div>
+            <div class="lessons-list-wrap">
+              <table class="sessions-table" id="sessions-table">
                 <thead>
                   <tr>
                     <th>Session</th>
                     <th>Mentor</th>
                     <th>Duration</th>
+                    <th>Join</th>
                   </tr>
                 </thead>
                 <tbody id="sessions-tbody">
-                  <tr><td colspan="3" class="text-muted">Loading sessions...</td></tr>
+                  <tr><td colspan="4" class="text-muted">Loading sessions...</td></tr>
                 </tbody>
               </table>
             </div>
           </div>
-          <aside class="recommendation-card">
-            <span class="rec-badge">Recommended</span>
-            <h3 class="rec-title">Get matched with a mentor</h3>
-            <p class="rec-desc">Tell us your goals and we’ll suggest the best mentors for you.</p>
-            <button type="button" class="btn-cta">Find my mentor</button>
+          <aside class="recommendation-card recommendation-card--green">
+            <span class="rec-badge">New course matching your interests</span>
+            <span class="card-tag rec-tag">Design</span>
+            <h3 class="rec-title">Advanced Typography for Digital Products</h3>
+            <p class="rec-desc">They are already studying</p>
+            <div class="rec-avatars">
+              <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=a1" alt="" width="32" height="32">
+              <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=a2" alt="" width="32" height="32">
+              <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=a3" alt="" width="32" height="32">
+              <span class="rec-avatars-plus">+100</span>
+            </div>
+            <button type="button" class="btn-cta btn-cta--orange" id="btn-more-details">More details</button>
           </aside>
         </section>
+        </div>
+
+        <!-- Panel: Sessions -->
+        <div class="content-panel" id="panel-sessions" data-page="sessions">
+          <h1 class="page-title">My sessions</h1>
+          <div class="table-wrap">
+            <table class="sessions-table" id="sessions-table-full">
+              <thead><tr><th>Session</th><th>Mentor</th><th>Duration</th><th>Date</th><th>Join</th></tr></thead>
+              <tbody id="sessions-tbody-full"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Panel: Mentors -->
+        <div class="content-panel" id="panel-mentors" data-page="mentors">
+          <h1 class="page-title">My mentor</h1>
+          <div class="mentor-info-card" id="mentor-info-card">
+            <p class="text-muted">Loading...</p>
+          </div>
+        </div>
+
+        <!-- Panel: Progress -->
+        <div class="content-panel" id="panel-progress" data-page="progress">
+          <h1 class="page-title">My progress</h1>
+          <div class="progress-content" id="progress-content">
+            <p class="text-muted">Loading...</p>
+          </div>
+        </div>
+
+        <!-- Panel: Settings -->
+        <div class="content-panel" id="panel-settings" data-page="settings">
+          <h1 class="page-title">Settings</h1>
+          <div class="settings-content">
+            <label for="profile-picture-pref" class="settings-label">Profile picture</label>
+            <select id="profile-picture-pref" class="settings-select">
+              <option value="male">Male illustration</option>
+              <option value="female">Female illustration</option>
+            </select>
+            <p class="text-muted" style="margin-top: 1rem;">More options coming soon.</p>
+          </div>
+        </div>
+
+        <!-- Panel: Admin – Assign mentors to students (teacher-centric) -->
+        <div class="content-panel" id="panel-admin-mentors" data-page="admin-mentors">
+          <h1 class="page-title">Assign mentors to students</h1>
+          <p class="text-muted" style="margin-bottom: 1.25rem;">Under each teacher, click &quot;Assign students&quot; to choose which students have that mentor.</p>
+          <h2 class="panel-title">All teachers (mentors)</h2>
+          <div class="table-wrap">
+            <table class="sessions-table" id="admin-teachers-table">
+              <thead>
+                <tr>
+                  <th>Name</th>
+                  <th>Email</th>
+                  <th>Department</th>
+                  <th>Designation</th>
+                  <th>Assigned students</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="admin-teachers-tbody">
+                <tr><td colspan="6" class="text-muted">Loading...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
       </div>
     </main>
   </div>
+
+  <!-- Modal for course/recommendation detail -->
+  <div class="modal-overlay" id="modal-overlay" aria-hidden="true">
+    <div class="modal" id="modal">
+      <div class="modal-header">
+        <h3 class="modal-title" id="modal-title"></h3>
+        <button type="button" class="modal-close" id="modal-close" aria-label="Close">&times;</button>
+      </div>
+      <div class="modal-body" id="modal-body"></div>
+    </div>
+  </div>
+
+  <!-- Modal: Assign students to teacher (admin) -->
+  <div class="modal-overlay" id="assign-students-modal" aria-hidden="true">
+    <div class="modal modal--wide" id="assign-students-modal-inner">
+      <div class="modal-header">
+        <h3 class="modal-title" id="assign-students-modal-title">Assign students</h3>
+        <button type="button" class="modal-close" id="assign-students-modal-close" aria-label="Close">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p class="text-muted" style="margin-bottom: 0.75rem;">Select students to assign to this mentor. You can select multiple.</p>
+        <div class="assign-students-list" id="assign-students-list"></div>
+        <p id="assign-students-message" class="text-muted" style="margin-top: 0.75rem;"></p>
+        <button type="button" class="btn-continue btn-continue--lime" id="assign-students-submit" style="margin-top: 1rem;">Assign selected</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Help modal content is injected by script -->
   <script src="api.js"></script>
   <script src="script.js"></script>
 </body>

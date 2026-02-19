@@ -17,7 +17,7 @@ const userSchema = new mongoose.Schema(
     password: {
       type: String,
       required: true,
-      minlength: 6,
+      minlength: 5, // allow 5-digit roll numbers as student password
       select: false, // don't return password in queries by default
     },
     role: {
@@ -43,6 +43,11 @@ const userSchema = new mongoose.Schema(
     isActive: {
       type: Boolean,
       default: true,
+    },
+    gender: {
+      type: String,
+      enum: ['male', 'female'],
+      default: null,
     },
   },
   { timestamps: true }

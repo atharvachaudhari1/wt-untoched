@@ -13,6 +13,7 @@ router.use(authorizeRoles('student'));
 
 router.get('/dashboard', studentController.dashboard);
 router.get('/mentor', studentController.getMentor);
+router.get('/live-sessions', studentController.getLiveSessions);
 router.get('/sessions/upcoming', studentController.upcomingSessions);
 router.get('/sessions/:id/meet-link', studentController.getMeetLink);
 router.get('/attendance', studentController.getAttendance);

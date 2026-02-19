@@ -140,6 +140,45 @@ exports.analytics = async (req, res, next) => {
 };
 
 /**
+ * Admin: list all students (User + StudentProfile). Query: department, year, limit.
+ */
+exports.getAllStudents = async (req, res, next) => {
+  try {
+    const { department, year, limit = 500 } = req.query;
+    const query = {};
+    if (department) query.department = department;
+    if (year) query.year = Number(year);
+    const profiles = await StudentProfile.find(query)
+      .sort({ rollNo: 1 })
+      .limit(Number(limit))
+      .populate('user', 'name email');
+    res.json({ success: true, students: profiles });
+  } catch (err) {
+    next(err);
+  }
+};
+
+/**
+ * Admin: list all teachers (mentors). Query: department, limit.
+ */
+exports.getAllTeachers = async (req, res, next) => {
+  try {
+    const { department, limit = 100 } = req.query;
+    const query = {};
+    if (department) query.department = department;
+    const teachers = await TeacherProfile.find(query)
+      .sort({ department: 1 })
+      .limit(Number(limit))
+      .populate('user', 'name email')
+      .populate('assignedStudents', 'user rollNo department year')
+      .populate('assignedStudents.user', 'name email');
+    res.json({ success: true, teachers });
+  } catch (err) {
+    next(err);
+  }
+};
+
+/**
  * Admin: list/create/update announcements - create uses announcementController; list all.
  */
 exports.getAllAnnouncements = async (req, res, next) => {

@@ -66,3 +66,31 @@ exports.me = async (req, res, next) => {
     next(err);
   }
 };
+
+/**
+ * PATCH /api/auth/me - update current user (e.g. gender for avatar)
+ * Body: { gender?: 'male' | 'female' }
+ */
+exports.updateMe = async (req, res, next) => {
+  try {
+    const { gender } = req.body;
+    const update = {};
+    if (gender !== undefined) {
+      if (gender === null || gender === 'male' || gender === 'female') {
+        update.gender = gender;
+      }
+    }
+    if (Object.keys(update).length === 0) {
+      return res.status(400).json({ success: false, message: 'No valid fields to update.' });
+    }
+    const user = await User.findByIdAndUpdate(
+      req.user.id,
+      { $set: update },
+      { new: true }
+    ).select('-password');
+    if (!user) return res.status(404).json({ success: false, message: 'User not found.' });
+    res.json({ success: true, user });
+  } catch (err) {
+    next(err);
+  }
+};

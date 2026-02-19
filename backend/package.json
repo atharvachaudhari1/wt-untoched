@@ -5,7 +5,9 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "dev": "node --watch server.js"
+    "dev": "node --watch server.js",
+    "seed-attendance": "node scripts/seedAttendance.js",
+    "seed-mentoring": "node scripts/seedMentoringData.js"
   },
   "keywords": ["mentoring", "college", "express", "mongodb"],
   "author": "",
@@ -16,6 +18,7 @@
     "dotenv": "^16.3.1",
     "express": "^4.18.2",
     "jsonwebtoken": "^9.0.2",
-    "mongoose": "^8.0.3"
+    "mongoose": "^8.0.3",
+    "xlsx": "^0.18.5"
   }
 }

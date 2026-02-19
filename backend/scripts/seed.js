@@ -82,7 +82,7 @@ async function runSeed() {
     inTwoDays.setDate(inTwoDays.getDate() + 2);
     const teacherUser = await User.findOne({ email: DEFAULTS.teacher.email });
     await Session.create({
-      title: 'UI/UX Fundamentals',
+      title: 'Mentoring',
       teacher: teacherProfile._id,
       students: [studentProfile._id],
       scheduledAt: inTwoDays,

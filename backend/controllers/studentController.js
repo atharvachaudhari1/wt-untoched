@@ -64,6 +64,27 @@ exports.upcomingSessions = async (req, res, next) => {
   }
 };
 
+/**
+ * GET /api/student/live-sessions - Sessions that have a Meet link (student can join).
+ */
+exports.getLiveSessions = async (req, res, next) => {
+  try {
+    const profile = await StudentProfile.findOne({ user: req.user.id });
+    if (!profile) return res.json({ success: true, sessions: [] });
+    const sessions = await Session.find({
+      students: profile._id,
+      meetLink: { $exists: true, $ne: null, $ne: '' },
+    })
+      .sort({ scheduledAt: 1 })
+      .populate('teacher', 'user department')
+      .populate('teacher.user', 'name')
+      .select('_id title meetLink scheduledAt duration');
+    res.json({ success: true, sessions });
+  } catch (err) {
+    next(err);
+  }
+};
+
 exports.getMeetLink = async (req, res, next) => {
   try {
     const profile = await StudentProfile.findOne({ user: req.user.id });
