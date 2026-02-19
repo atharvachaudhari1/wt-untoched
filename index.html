@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>My Mentoring | Dashboard</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="app">
+    <!-- LEFT SIDEBAR -->
+    <aside class="sidebar">
+      <div class="sidebar-brand">
+        <span class="sidebar-logo">◆</span>
+        <span class="sidebar-title">Mentor</span>
+      </div>
+      <nav class="sidebar-nav">
+        <a href="#" class="nav-item active" data-page="mentoring" aria-label="Mentoring">
+          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M12 14l9-5-9-5-9 5 9 5z"/>
+            <path d="M12 14l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0012 20.055a11.952 11.952 0 00-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14z"/>
+          </svg>
+          <span class="nav-label">Mentoring</span>
+        </a>
+        <a href="#" class="nav-item" data-page="sessions" aria-label="Sessions">
+          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+            <line x1="16" y1="2" x2="16" y2="6"/>
+            <line x1="8" y1="2" x2="8" y2="6"/>
+            <line x1="3" y1="10" x2="21" y2="10"/>
+          </svg>
+          <span class="nav-label">Sessions</span>
+        </a>
+        <a href="#" class="nav-item" data-page="mentors" aria-label="Mentors">
+          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+            <circle cx="9" cy="7" r="4"/>
+            <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+            <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+          </svg>
+          <span class="nav-label">Mentors</span>
+        </a>
+        <a href="#" class="nav-item" data-page="progress" aria-label="Progress">
+          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="18" y1="20" x2="18" y2="10"/>
+            <line x1="12" y1="20" x2="12" y2="4"/>
+            <line x1="6" y1="20" x2="6" y2="14"/>
+          </svg>
+          <span class="nav-label">Progress</span>
+        </a>
+        <a href="#" class="nav-item" data-page="settings" aria-label="Settings">
+          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="3"/>
+            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+          </svg>
+          <span class="nav-label">Settings</span>
+        </a>
+      </nav>
+      <div class="sidebar-footer">
+        <a href="#" class="nav-item" aria-label="Help">
+          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10"/>
+            <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/>
+            <line x1="12" y1="17" x2="12.01" y2="17"/>
+          </svg>
+          <span class="nav-label">Help</span>
+        </a>
+      </div>
+    </aside>
+
+    <!-- MAIN CONTENT -->
+    <main class="main">
+      <!-- TOP NAVBAR -->
+      <header class="navbar">
+        <div class="navbar-search">
+          <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="11" cy="11" r="8"/>
+            <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+          </svg>
+          <input type="search" placeholder="Search sessions, mentors..." class="search-input" aria-label="Search">
+        </div>
+        <div class="navbar-actions">
+          <span class="user-name" id="nav-user-name"></span>
+          <button type="button" class="btn-icon btn-notify" id="btn-notify" aria-label="Notifications">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+              <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+            </svg>
+            <span class="notify-dot" id="notify-dot"></span>
+          </button>
+          <a href="#" id="btn-logout" class="btn-logout">Logout</a>
+          <div class="profile-avatar" aria-label="Profile">
+            <img id="nav-avatar" src="https://api.dicebear.com/7.x/avataaars/svg?seed=user" alt="Profile" width="40" height="40">
+          </div>
+        </div>
+      </header>
+
+      <!-- MAIN SECTION -->
+      <div class="content">
+        <h1 class="page-title">My Mentoring</h1>
+
+        <!-- ROW 1: Gradient mentoring cards (filled by API) -->
+        <section class="cards-row" id="cards-row">
+          <article class="mentor-card mentor-card--design" data-session-id="">
+            <span class="card-tag">Session</span>
+            <h2 class="card-title">Loading...</h2>
+            <div class="card-progress">
+              <div class="progress-bar" style="--progress: 0%"></div>
+              <span class="progress-text">—</span>
+            </div>
+            <div class="card-avatars"></div>
+            <button type="button" class="btn-continue" data-session-id="">Continue</button>
+          </article>
+          <article class="mentor-card mentor-card--business" data-session-id="">
+            <span class="card-tag">Session</span>
+            <h2 class="card-title">Loading...</h2>
+            <div class="card-progress">
+              <div class="progress-bar" style="--progress: 0%"></div>
+              <span class="progress-text">—</span>
+            </div>
+            <div class="card-avatars"></div>
+            <button type="button" class="btn-continue" data-session-id="">Continue</button>
+          </article>
+          <article class="mentor-card mentor-card--programming" data-session-id="">
+            <span class="card-tag">Session</span>
+            <h2 class="card-title">Loading...</h2>
+            <div class="card-progress">
+              <div class="progress-bar" style="--progress: 0%"></div>
+              <span class="progress-text">—</span>
+            </div>
+            <div class="card-avatars"></div>
+            <button type="button" class="btn-continue" data-session-id="">Continue</button>
+          </article>
+        </section>
+
+        <!-- ROW 2: Sessions table + Recommendation card -->
+        <section class="bottom-row">
+          <div class="sessions-panel">
+            <h2 class="panel-title">My next sessions</h2>
+            <div class="table-wrap">
+              <table class="sessions-table">
+                <thead>
+                  <tr>
+                    <th>Session</th>
+                    <th>Mentor</th>
+                    <th>Duration</th>
+                  </tr>
+                </thead>
+                <tbody id="sessions-tbody">
+                  <tr><td colspan="3" class="text-muted">Loading sessions...</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+          <aside class="recommendation-card">
+            <span class="rec-badge">Recommended</span>
+            <h3 class="rec-title">Get matched with a mentor</h3>
+            <p class="rec-desc">Tell us your goals and we’ll suggest the best mentors for you.</p>
+            <button type="button" class="btn-cta">Find my mentor</button>
+          </aside>
+        </section>
+      </div>
+    </main>
+  </div>
+  <script src="api.js"></script>
+  <script src="script.js"></script>
+</body>
+</html>
