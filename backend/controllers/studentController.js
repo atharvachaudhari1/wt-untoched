@@ -19,6 +19,7 @@ exports.dashboard = async (req, res, next) => {
     })
       .sort({ scheduledAt: 1 })
       .limit(10)
+      .select('title scheduledAt duration meetLink teacher students')
       .populate('teacher', 'user department')
       .populate('teacher.user', 'name');
     let healthScore = profile.mentoringHealthScore;
@@ -56,6 +57,7 @@ exports.upcomingSessions = async (req, res, next) => {
       status: 'scheduled',
     })
       .sort({ scheduledAt: 1 })
+      .select('title scheduledAt duration meetLink teacher students')
       .populate('teacher', 'user department')
       .populate('teacher.user', 'name');
     res.json({ success: true, sessions });

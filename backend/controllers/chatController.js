@@ -14,54 +14,61 @@ function normalizeParticipants(uid1, uid2) {
 exports.getContacts = async (req, res, next) => {
   try {
     const me = req.user;
+    if (!me || !me._id) {
+      return res.status(401).json({ success: false, message: 'Not authenticated.' });
+    }
     const contacts = [];
 
     if (me.role === 'student') {
       const profile = await StudentProfile.findOne({ user: me._id }).populate('mentor', 'user');
       if (profile && profile.mentor && profile.mentor.user) {
         const mentorUser = await User.findById(profile.mentor.user).select('name email role');
-        if (mentorUser) contacts.push({ _id: mentorUser._id, name: mentorUser.name, email: mentorUser.email, role: mentorUser.role });
+        if (mentorUser) contacts.push({ _id: mentorUser._id.toString(), name: mentorUser.name, email: mentorUser.email, role: mentorUser.role });
       }
     } else if (me.role === 'teacher') {
       const profile = await TeacherProfile.findOne({ user: me._id });
-      if (profile) {
-        const raw = (profile.assignedStudents || []).filter(Boolean);
-        const assignedIds = raw.map((s) => (s._id != null ? s._id : s).toString());
-        // 1. Assigned students (can message each student)
+      let assignedIds = [];
+      if (profile && profile.assignedStudents && profile.assignedStudents.length) {
+        const raw = profile.assignedStudents.filter(Boolean);
+        assignedIds = raw
+          .map((s) => (s._id != null ? s._id : s))
+          .filter((id) => id && mongoose.Types.ObjectId.isValid(id.toString()))
+          .map((id) => id.toString());
+      }
+      if (assignedIds.length > 0) {
         const studentProfiles = await StudentProfile.find({ _id: { $in: assignedIds } }).populate('user', 'name email role');
         studentProfiles.forEach((sp) => {
-          if (sp.user) contacts.push({ _id: sp.user._id, name: sp.user.name, email: sp.user.email, role: 'student' });
+          if (sp.user) contacts.push({ _id: sp.user._id.toString(), name: sp.user.name, email: sp.user.email, role: 'student' });
         });
-        // 2. Parents of those students (can message each parent)
         const parentIds = await StudentProfile.distinct('parent', { _id: { $in: assignedIds } });
-        const validParentIds = parentIds.filter((id) => id != null);
-        if (validParentIds.length) {
+        const validParentIds = (parentIds || []).filter((id) => id != null && mongoose.Types.ObjectId.isValid(id.toString()));
+        if (validParentIds.length > 0) {
           const parentProfiles = await ParentProfile.find({ _id: { $in: validParentIds } }).populate('user', 'name email role');
           parentProfiles.forEach((pp) => {
-            if (pp.user) contacts.push({ _id: pp.user._id, name: pp.user.name, email: pp.user.email, role: 'parent' });
+            if (pp.user) contacts.push({ _id: pp.user._id.toString(), name: pp.user.name, email: pp.user.email, role: 'parent' });
           });
         }
-        // 3. Admin (can message any admin)
-        const adminUsers = await User.find({ role: 'admin' }).select('name email role');
-        adminUsers.forEach((u) => contacts.push({ _id: u._id, name: u.name, email: u.email, role: u.role }));
       }
+      const adminUsers = await User.find({ role: 'admin' }).select('name email role');
+      adminUsers.forEach((u) => contacts.push({ _id: u._id.toString(), name: u.name, email: u.email, role: u.role }));
     } else if (me.role === 'admin') {
       const teachers = await User.find({ role: 'teacher' }).select('name email role');
-      teachers.forEach((u) => contacts.push({ _id: u._id, name: u.name, email: u.email, role: u.role }));
+      teachers.forEach((u) => contacts.push({ _id: u._id.toString(), name: u.name, email: u.email, role: u.role }));
     } else if (me.role === 'parent') {
       const profile = await ParentProfile.findOne({ user: me._id }).populate('linkedStudents');
       if (profile && profile.linkedStudents && profile.linkedStudents.length) {
         const mentorIds = [...new Set(profile.linkedStudents.map((s) => s.mentor).filter(Boolean))];
         const teacherProfiles = await TeacherProfile.find({ _id: { $in: mentorIds } }).populate('user', 'name email role');
         teacherProfiles.forEach((tp) => {
-          if (tp.user) contacts.push({ _id: tp.user._id, name: tp.user.name, email: tp.user.email, role: 'teacher' });
+          if (tp.user) contacts.push({ _id: tp.user._id.toString(), name: tp.user.name, email: tp.user.email, role: 'teacher' });
         });
       }
     }
 
-    res.json({ success: true, contacts });
+    return res.json({ success: true, contacts });
   } catch (err) {
-    next(err);
+    console.error('getContacts error:', err.message || err);
+    return res.json({ success: true, contacts: [] });
   }
 };
 

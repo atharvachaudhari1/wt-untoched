@@ -167,16 +167,33 @@
       return;
     }
     tbody.innerHTML = sessions.map(function (s) {
-      var joinCell = (s.meetLink && s.meetLink.trim())
-        ? '<a href="#" class="join-meet-link" data-meet-link="' + (s.meetLink || '').replace(/"/g, '&quot;') + '">Join meeting</a>'
-        : '—';
+      var sid = (s._id && s._id.toString()) ? s._id.toString().replace(/"/g, '&quot;') : '';
+      var link = (s.meetLink && String(s.meetLink).trim()) ? String(s.meetLink).trim() : '';
+      var joinCell = link
+        ? '<a href="#" class="join-meet-link" data-meet-link="' + link.replace(/"/g, '&quot;') + '" data-session-id="' + sid + '">Join meeting</a>'
+        : (sid ? '<a href="#" class="join-meet-link-fetch" data-session-id="' + sid + '">Get link</a>' : '—');
       return '<tr><td>' + (s.title || '—') + '</td><td>' + mentorName(s) + '</td><td>' + (s.duration ? s.duration + ' min' : '—') + '</td><td>' + joinCell + '</td></tr>';
     }).join('');
     tbody.querySelectorAll('.join-meet-link').forEach(function (a) {
       a.addEventListener('click', function (e) {
         e.preventDefault();
-        var link = a.getAttribute('data-meet-link');
-        if (link) window.open(link, '_blank');
+        var url = a.getAttribute('data-meet-link');
+        if (url) { window.open(url, '_blank'); return; }
+        var id = a.getAttribute('data-session-id');
+        if (id && typeof ECS_API !== 'undefined') {
+          ECS_API.student.meetLink(id).then(function (d) { if (d.meetLink) window.open(d.meetLink, '_blank'); }).catch(function () {});
+        }
+      });
+    });
+    tbody.querySelectorAll('.join-meet-link-fetch').forEach(function (a) {
+      a.addEventListener('click', function (e) {
+        e.preventDefault();
+        var id = a.getAttribute('data-session-id');
+        if (id && typeof ECS_API !== 'undefined') {
+          ECS_API.student.meetLink(id).then(function (d) {
+            if (d.meetLink) { window.open(d.meetLink, '_blank'); a.textContent = 'Join meeting'; a.classList.remove('join-meet-link-fetch'); a.classList.add('join-meet-link'); a.setAttribute('data-meet-link', d.meetLink); }
+          }).catch(function () {});
+        }
       });
     });
   }
@@ -213,14 +230,35 @@
           return;
         }
         tbody.innerHTML = sessions.map(function (s) {
+          var sid = (s._id && s._id.toString()) ? s._id.toString().replace(/"/g, '&quot;') : '';
           var dateStr = s.scheduledAt ? new Date(s.scheduledAt).toLocaleString() : '—';
-          var joinCell = (s.meetLink && s.meetLink.trim())
-            ? '<a href="#" class="join-meet-link" data-meet-link="' + (s.meetLink || '').replace(/"/g, '&quot;') + '">Join meeting</a>'
-            : '—';
+          var link = (s.meetLink && String(s.meetLink).trim()) ? String(s.meetLink).trim() : '';
+          var joinCell = link
+            ? '<a href="#" class="join-meet-link" data-meet-link="' + link.replace(/"/g, '&quot;') + '" data-session-id="' + sid + '">Join meeting</a>'
+            : (sid ? '<a href="#" class="join-meet-link-fetch" data-session-id="' + sid + '">Get link</a>' : '—');
           return '<tr><td>' + (s.title || '—') + '</td><td>' + mentorName(s) + '</td><td>' + (s.duration ? s.duration + ' min' : '—') + '</td><td>' + dateStr + '</td><td>' + joinCell + '</td></tr>';
         }).join('');
         tbody.querySelectorAll('.join-meet-link').forEach(function (a) {
-          a.addEventListener('click', function (e) { e.preventDefault(); var link = a.getAttribute('data-meet-link'); if (link) window.open(link, '_blank'); });
+          a.addEventListener('click', function (e) {
+            e.preventDefault();
+            var url = a.getAttribute('data-meet-link');
+            if (url) { window.open(url, '_blank'); return; }
+            var id = a.getAttribute('data-session-id');
+            if (id && typeof ECS_API !== 'undefined') {
+              ECS_API.student.meetLink(id).then(function (d) { if (d.meetLink) window.open(d.meetLink, '_blank'); }).catch(function () {});
+            }
+          });
+        });
+        tbody.querySelectorAll('.join-meet-link-fetch').forEach(function (a) {
+          a.addEventListener('click', function (e) {
+            e.preventDefault();
+            var id = a.getAttribute('data-session-id');
+            if (id && typeof ECS_API !== 'undefined') {
+              ECS_API.student.meetLink(id).then(function (d) {
+                if (d.meetLink) { window.open(d.meetLink, '_blank'); a.textContent = 'Join meeting'; a.classList.remove('join-meet-link-fetch'); a.classList.add('join-meet-link'); a.setAttribute('data-meet-link', d.meetLink); }
+              }).catch(function () {});
+            }
+          });
         });
       })
       .catch(function () {
@@ -249,27 +287,70 @@
   }
 
   function loadProgressPanel() {
-    var el = document.getElementById('progress-content');
-    if (!el || typeof ECS_API === 'undefined' || !user || user.role !== 'student') return;
+    var statAttended = document.getElementById('stat-attended');
+    var statMissed = document.getElementById('stat-missed');
+    var statTotal = document.getElementById('stat-total');
+    var statPercent = document.getElementById('stat-percent');
+    var rateBar = document.getElementById('progress-rate-bar');
+    var rateLabel = document.getElementById('progress-rate-label');
+    var trendChart = document.getElementById('progress-trend-chart');
+    var trendLabels = document.getElementById('progress-trend-labels');
+    if (!statAttended || !statPercent || !rateBar || !trendChart) return;
+
+    function setProgressStats(attended, missed, total, percent) {
+      var pct = typeof percent === 'number' ? Math.round(percent) + '%' : (percent || '0%');
+      if (statAttended) statAttended.textContent = attended;
+      if (statMissed) statMissed.textContent = missed;
+      if (statTotal) statTotal.textContent = total;
+      if (statPercent) statPercent.textContent = pct;
+      if (rateBar) { rateBar.style.width = pct; rateBar.setAttribute('aria-valuenow', pct); }
+      if (rateLabel) rateLabel.textContent = pct;
+    }
+
+    function setTrendBars(weeklyCounts) {
+      var max = Math.max(1, Math.max.apply(null, weeklyCounts));
+      trendChart.innerHTML = weeklyCounts.map(function (count, i) {
+        var h = max > 0 ? (count / max) * 100 : 0;
+        return '<div class="progress-trend-bar-wrap"><div class="progress-trend-bar" style="height: ' + h + '%" title="' + count + ' attended"></div></div>';
+      }).join('');
+      var weekLabels = ['Wk 6', 'Wk 5', 'Wk 4', 'Wk 3', 'Wk 2', 'This wk'];
+      if (trendLabels) trendLabels.innerHTML = weekLabels.map(function (l) { return '<span>' + l + '</span>'; }).join('');
+    }
+
+    setProgressStats(0, 0, 0, 0);
+    setTrendBars([0, 0, 0, 0, 0, 0]);
+
+    if (typeof ECS_API === 'undefined' || !user || user.role !== 'student') return;
+
     ECS_API.student.attendance()
       .then(function (data) {
         var records = data.attendance || data.records || [];
-        if (!records.length) {
-          el.innerHTML = '<p class="text-muted">No attendance records yet.</p>';
-          return;
-        }
-        var html = '<table class="sessions-table"><thead><tr><th>Session</th><th>Status</th><th>Date</th></tr></thead><tbody>';
-        records.slice(0, 20).forEach(function (r) {
-          var title = (r.session && r.session.title) ? r.session.title : '—';
-          var status = (r.status || '—').replace(/</g, '&lt;');
-          var date = r.createdAt ? new Date(r.createdAt).toLocaleDateString() : '—';
-          html += '<tr><td>' + title + '</td><td>' + status + '</td><td>' + date + '</td></tr>';
+        var attended = 0, missed = 0;
+        records.forEach(function (r) {
+          var s = (r.status || '').toLowerCase();
+          if (s === 'present' || s === 'late' || s === 'excused') attended++;
+          else if (s === 'absent') missed++;
         });
-        html += '</tbody></table>';
-        el.innerHTML = html;
+        var total = attended + missed;
+        var percent = total > 0 ? (attended / total) * 100 : 0;
+        setProgressStats(attended, missed, total, percent);
+
+        var now = new Date();
+        var weekCounts = [0, 0, 0, 0, 0, 0];
+        records.forEach(function (r) {
+          var d = r.createdAt ? new Date(r.createdAt) : (r.session && r.session.scheduledAt ? new Date(r.session.scheduledAt) : null);
+          if (!d) return;
+          var weeksAgo = Math.floor((now - d) / (7 * 24 * 60 * 60 * 1000));
+          if (weeksAgo >= 0 && weeksAgo <= 5) {
+            var s = (r.status || '').toLowerCase();
+            if (s === 'present' || s === 'late' || s === 'excused') weekCounts[5 - weeksAgo]++;
+          }
+        });
+        setTrendBars(weekCounts);
       })
       .catch(function () {
-        el.innerHTML = '<p class="text-muted">No attendance data or could not load.</p>';
+        setProgressStats(0, 0, 0, 0);
+        setTrendBars([0, 0, 0, 0, 0, 0]);
       });
   }
 
@@ -394,8 +475,10 @@
           chatContacts = data.contacts || [];
           showChatContactsDropdown();
         })
-        .catch(function () {
-          if (chatContactsList) chatContactsList.innerHTML = '<li class="text-muted">Could not load contacts.</li>';
+        .catch(function (err) {
+          var msg = (err && err.message) ? err.message : 'Could not load contacts.';
+          if (msg.indexOf('404') !== -1) msg = 'Chat not available (404). Restart the backend server and refresh the page.';
+          if (chatContactsList) chatContactsList.innerHTML = '<li class="text-muted">' + msg.replace(/</g, '&lt;') + '</li>';
         });
     });
   }
