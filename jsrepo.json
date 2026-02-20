@@ -1,0 +1,7 @@
+{
+  "paths": {
+    "*": "./src/components",
+    "components": "./src/components",
+    "component": "./src/components"
+  }
+}

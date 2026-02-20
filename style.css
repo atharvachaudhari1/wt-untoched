@@ -246,6 +246,22 @@ img {
   gap: var(--space-3);
 }
 
+.profile-block--btn {
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  border-radius: var(--radius);
+  transition: background var(--duration-normal) var(--ease-out);
+}
+
+.profile-block--btn:hover {
+  background: rgba(0, 0, 0, 0.04);
+}
+
 .profile-info {
   display: flex;
   flex-direction: column;
@@ -831,6 +847,74 @@ img {
   padding: var(--space-5);
   overflow-y: auto;
   max-height: 60vh;
+}
+
+/* Profile modal: user details only */
+.modal--profile-card {
+  max-width: 420px;
+  width: 100%;
+}
+
+.modal-body--profile-card {
+  padding: var(--space-6);
+}
+
+.profile-card-details {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+.profile-card-avatar-img {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  object-fit: cover;
+  margin-bottom: var(--space-4);
+  border: 2px solid var(--glass-border);
+}
+
+.profile-card-name {
+  font-size: 1.25rem;
+  font-weight: 600;
+  margin: 0 0 var(--space-1);
+  color: var(--text);
+}
+
+.profile-card-handle {
+  font-size: 0.875rem;
+  margin: 0 0 var(--space-4);
+}
+
+.profile-card-meta {
+  width: 100%;
+  margin: 0;
+  text-align: left;
+  font-size: 0.875rem;
+}
+
+.profile-card-meta dt {
+  color: var(--text-muted);
+  font-weight: 500;
+  margin-top: var(--space-3);
+  margin-bottom: var(--space-1);
+}
+
+.profile-card-meta dt:first-child {
+  margin-top: 0;
+}
+
+.profile-card-meta dd {
+  margin: 0;
+  color: var(--text);
+  word-break: break-word;
+}
+
+@media (max-width: 768px) {
+  .profile-card-details {
+    width: 100%;
+  }
 }
 
 /* Bookmark active state */

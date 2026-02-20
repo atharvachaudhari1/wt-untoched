@@ -115,15 +115,15 @@
             </div>
           </div>
           <a href="#" id="btn-logout" class="btn-logout">Logout</a>
-          <div class="profile-block">
-            <div class="profile-avatar" aria-label="Profile">
+          <button type="button" class="profile-block profile-block--btn" id="btn-profile" aria-label="Open profile">
+            <div class="profile-avatar">
               <img id="nav-avatar" src="" alt="Profile" width="44" height="44">
             </div>
             <div class="profile-info">
               <span class="user-name" id="nav-user-name">User</span>
               <span class="user-handle" id="nav-user-handle">@student</span>
             </div>
-          </div>
+          </button>
         </div>
       </header>
 
@@ -356,7 +356,29 @@
     </div>
   </div>
 
-  <!-- Help modal content is injected by script -->
+  <!-- Profile modal: user details only -->
+  <div class="modal-overlay" id="profile-card-modal" aria-hidden="true">
+    <div class="modal modal--profile-card" id="profile-card-modal-inner">
+      <div class="modal-header">
+        <h3 class="modal-title">Profile</h3>
+        <button type="button" class="modal-close" id="profile-card-modal-close" aria-label="Close">&times;</button>
+      </div>
+      <div class="modal-body modal-body--profile-card">
+        <div class="profile-card-details">
+          <img id="profile-card-avatar" src="" alt="" width="80" height="80" class="profile-card-avatar-img">
+          <h4 class="profile-card-name" id="profile-card-name">—</h4>
+          <p class="profile-card-handle text-muted" id="profile-card-handle">—</p>
+          <dl class="profile-card-meta">
+            <dt>Email</dt>
+            <dd id="profile-card-email">—</dd>
+            <dt>Role</dt>
+            <dd id="profile-card-role">—</dd>
+          </dl>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <script src="api.js"></script>
   <script src="script.js"></script>
 </body>

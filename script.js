@@ -23,6 +23,48 @@
     navAvatar.alt = user.name ? user.name + ' profile' : 'Profile';
   }
 
+  // ----- Profile modal (user details only) -----
+  var profileCardModal = document.getElementById('profile-card-modal');
+  var profileCardModalClose = document.getElementById('profile-card-modal-close');
+  var profileCardAvatar = document.getElementById('profile-card-avatar');
+  var profileCardName = document.getElementById('profile-card-name');
+  var profileCardHandle = document.getElementById('profile-card-handle');
+  var profileCardEmail = document.getElementById('profile-card-email');
+  var profileCardRole = document.getElementById('profile-card-role');
+
+  function openProfileCardModal() {
+    if (!user) return;
+    if (profileCardAvatar) {
+      profileCardAvatar.src = user.gender === 'female' ? AVATAR_FEMALE : AVATAR_MALE;
+      profileCardAvatar.alt = user.name ? user.name + ' profile' : 'Profile';
+    }
+    if (profileCardName) profileCardName.textContent = user.name || '—';
+    if (profileCardHandle) {
+      var handle = (user.email && user.email.split('@')[0]) ? '@' + user.email.split('@')[0].replace(/\./g, '_') : ('@' + (user.role || 'user'));
+      profileCardHandle.textContent = handle;
+    }
+    if (profileCardEmail) profileCardEmail.textContent = user.email || '—';
+    if (profileCardRole) profileCardRole.textContent = (user.role || '—').replace(/^./, function (c) { return c.toUpperCase(); });
+    if (profileCardModal) {
+      profileCardModal.classList.add('is-open');
+      profileCardModal.setAttribute('aria-hidden', 'false');
+    }
+  }
+
+  function closeProfileCardModal() {
+    if (profileCardModal) {
+      profileCardModal.classList.remove('is-open');
+      profileCardModal.setAttribute('aria-hidden', 'true');
+    }
+  }
+
+  var btnProfile = document.getElementById('btn-profile');
+  if (btnProfile) btnProfile.addEventListener('click', openProfileCardModal);
+  if (profileCardModalClose) profileCardModalClose.addEventListener('click', closeProfileCardModal);
+  if (profileCardModal) profileCardModal.addEventListener('click', function (e) {
+    if (e.target === profileCardModal) closeProfileCardModal();
+  });
+
   // ----- Logout -----
   var btnLogout = document.getElementById('btn-logout');
   if (btnLogout && typeof ECS_API !== 'undefined') {
