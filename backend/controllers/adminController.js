@@ -23,11 +23,21 @@ exports.createUser = async (req, res, next) => {
     let profileId = null;
     let profileModel = null;
 
-    if (role === 'student' && profileData) {
+    if (role === 'student') {
+      if (!profileData || (profileData.rollNo === undefined || profileData.rollNo === null || String(profileData.rollNo).trim() === '')) {
+        await User.findByIdAndDelete(user._id);
+        return res.status(400).json({ success: false, message: 'Student requires profileData with rollNo.' });
+      }
+      const rollNo = String(profileData.rollNo).trim();
+      const existingRoll = await StudentProfile.findOne({ rollNo, department: (profileData.department || '').trim() || 'CSE' });
+      if (existingRoll) {
+        await User.findByIdAndDelete(user._id);
+        return res.status(400).json({ success: false, message: 'A student with this roll number already exists in this department.' });
+      }
       const profile = await StudentProfile.create({
         user: user._id,
-        rollNo: profileData.rollNo || '',
-        department: profileData.department || '',
+        rollNo,
+        department: (profileData.department || '').trim() || 'CSE',
         year: profileData.year,
       });
       profileId = profile._id;
@@ -77,8 +87,11 @@ exports.assignMentor = async (req, res, next) => {
 
     student.mentor = mentorId;
     await student.save();
-    if (!teacher.assignedStudents.includes(studentId)) {
-      teacher.assignedStudents.push(studentId);
+    const alreadyAssigned = teacher.assignedStudents.some(
+      (id) => id && id.toString() === studentId.toString()
+    );
+    if (!alreadyAssigned) {
+      teacher.assignedStudents.push(student._id);
       await teacher.save();
     }
     res.json({ success: true, message: 'Mentor assigned.', student, mentor: teacher });

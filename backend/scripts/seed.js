@@ -3,13 +3,13 @@
  * Run standalone: node scripts/seed.js
  * Or runs automatically when server starts.
  */
-const { User, StudentProfile, TeacherProfile, ParentProfile, Session } = require('../models');
+const { User, StudentProfile, TeacherProfile, ParentProfile, Session, CourseAttendance } = require('../models');
 
 const DEFAULTS = {
   admin: { email: 'admin@ecs.edu', password: 'admin123', name: 'Admin User', role: 'admin' },
-  teacher: { email: 'teacher@ecs.edu', password: 'teacher123', name: 'Sarah Chen', role: 'teacher' },
-  student: { email: 'student@ecs.edu', password: 'student123', name: 'Alex Student', role: 'student' },
-  parent: { email: 'parent@ecs.edu', password: 'parent123', name: 'Parent User', role: 'parent' },
+  teachers: [],
+  student: null,
+  parent: null,
 };
 
 async function ensureUser(email, defaults) {
@@ -25,75 +25,98 @@ async function ensureUser(email, defaults) {
 }
 
 async function runSeed() {
-  let teacherProfile = await TeacherProfile.findOne().populate('user');
-  if (!teacherProfile) {
-    const u = await ensureUser(DEFAULTS.teacher.email, DEFAULTS.teacher);
-    teacherProfile = await TeacherProfile.create({
+  const teacherProfiles = [];
+  for (const t of DEFAULTS.teachers) {
+    let u = await User.findOne({ email: t.email });
+    let profile = u ? await TeacherProfile.findOne({ user: u._id }) : null;
+    if (profile) {
+      teacherProfiles.push(profile);
+      continue;
+    }
+    u = await ensureUser(t.email, { email: t.email, password: t.password, name: t.name, role: t.role });
+    profile = await TeacherProfile.create({
       user: u._id,
-      department: 'CSE',
-      designation: 'Associate Professor',
-      employeeId: 'EMP001',
+      department: t.department || 'CSE',
+      designation: t.designation || 'Faculty',
+      employeeId: t.employeeId || '',
     });
-    u.profileId = teacherProfile._id;
+    u.profileId = profile._id;
     u.profileModel = 'TeacherProfile';
     await u.save();
     console.log('Created teacher:', u.email);
+    teacherProfiles.push(profile);
   }
-
+  const teacherProfile = teacherProfiles[0];
   let studentProfile = await StudentProfile.findOne().populate('user');
-  if (!studentProfile) {
-    const u = await ensureUser(DEFAULTS.student.email, DEFAULTS.student);
-    studentProfile = await StudentProfile.create({
-      user: u._id,
-      rollNo: 'CS2024001',
-      department: 'CSE',
-      year: 2,
-      mentor: teacherProfile._id,
-    });
-    u.profileId = studentProfile._id;
-    u.profileModel = 'StudentProfile';
-    await u.save();
-    if (!teacherProfile.assignedStudents.some(id => id.toString() === studentProfile._id.toString())) {
-      teacherProfile.assignedStudents.push(studentProfile._id);
-      await teacherProfile.save();
+
+  if (DEFAULTS.student && teacherProfile) {
+    if (!studentProfile) {
+      const u = await ensureUser(DEFAULTS.student.email, DEFAULTS.student);
+      studentProfile = await StudentProfile.create({
+        user: u._id,
+        rollNo: 'CS2024001',
+        department: 'CSE',
+        year: 2,
+        mentor: teacherProfile._id,
+      });
+      u.profileId = studentProfile._id;
+      u.profileModel = 'StudentProfile';
+      await u.save();
+      if (!teacherProfile.assignedStudents.some(id => id.toString() === studentProfile._id.toString())) {
+        teacherProfile.assignedStudents.push(studentProfile._id);
+        await teacherProfile.save();
+      }
+      console.log('Created student:', u.email);
     }
-    console.log('Created student:', u.email);
   }
 
   await ensureUser(DEFAULTS.admin.email, DEFAULTS.admin);
 
-  let parentUser = await User.findOne({ email: DEFAULTS.parent.email });
-  if (!parentUser) {
-    parentUser = await ensureUser(DEFAULTS.parent.email, DEFAULTS.parent);
-    const parentProfile = await ParentProfile.create({
-      user: parentUser._id,
-      phone: '9876543210',
-      linkedStudents: [studentProfile._id],
-    });
-    parentUser.profileId = parentProfile._id;
-    parentUser.profileModel = 'ParentProfile';
-    await parentUser.save();
-    console.log('Created parent:', parentUser.email);
+  if (DEFAULTS.parent && studentProfile) {
+    const parentUser = await User.findOne({ email: DEFAULTS.parent.email });
+    if (!parentUser) {
+      const p = await ensureUser(DEFAULTS.parent.email, DEFAULTS.parent);
+      const parentProfile = await ParentProfile.create({
+        user: p._id,
+        phone: '9876543210',
+        linkedStudents: [studentProfile._id],
+      });
+      p.profileId = parentProfile._id;
+      p.profileModel = 'ParentProfile';
+      await p.save();
+      console.log('Created parent:', p.email);
+    }
   }
 
-  const sessionCount = await Session.countDocuments({ students: studentProfile._id });
-  if (sessionCount === 0) {
-    const inTwoDays = new Date();
-    inTwoDays.setDate(inTwoDays.getDate() + 2);
-    const teacherUser = await User.findOne({ email: DEFAULTS.teacher.email });
-    await Session.create({
-      title: 'Mentoring',
-      teacher: teacherProfile._id,
-      students: [studentProfile._id],
-      scheduledAt: inTwoDays,
-      duration: 45,
-      meetLink: 'https://meet.google.com/abc-defg-hij',
-      createdBy: teacherUser ? teacherUser._id : teacherProfile.user._id,
-    });
-    console.log('Created sample session for student.');
+  if (teacherProfile && studentProfile) {
+    const sessionCount = await Session.countDocuments({ students: studentProfile._id });
+    if (sessionCount === 0 && DEFAULTS.teachers.length > 0) {
+      const inTwoDays = new Date();
+      inTwoDays.setDate(inTwoDays.getDate() + 2);
+      const teacherUser = await User.findOne({ email: DEFAULTS.teachers[0].email });
+      await Session.create({
+        title: 'Mentoring',
+        teacher: teacherProfile._id,
+        students: [studentProfile._id],
+        scheduledAt: inTwoDays,
+        duration: 45,
+        meetLink: 'https://meet.google.com/abc-defg-hij',
+        createdBy: teacherUser ? teacherUser._id : teacherProfile.user._id,
+      });
+      console.log('Created sample session for student.');
+    }
+
+    const courseAttendanceCount = await CourseAttendance.countDocuments({ student: studentProfile._id });
+    if (courseAttendanceCount === 0) {
+      await CourseAttendance.create([
+        { student: studentProfile._id, courseCode: 'MATH101', courseName: 'Mathematics', totalLectures: 30, attended: 26, percentage: 86.67 },
+        { student: studentProfile._id, courseCode: 'MNM', courseName: 'Mathematics and Numerical Methods', totalLectures: 13, attended: 11, percentage: 84.62 },
+      ]);
+      console.log('Created sample course attendance for student.');
+    }
   }
 
-  console.log('--- Login: student@ecs.edu / student123 (role: Student) ---');
+  console.log('--- Login: admin@ecs.edu / admin123 (Admin). Add mentors/students via seed-ecs2025 or admin UI. ---');
 }
 
 if (require.main === module) {

@@ -8,6 +8,7 @@
     "dev": "node --watch server.js",
     "seed-attendance": "node scripts/seedAttendance.js",
     "seed-mentoring": "node scripts/seedMentoringData.js",
+    "seed-ecs2025": "node scripts/seedECSMentoring2025.js",
     "seed-mnm": "node scripts/seedMNM.js",
     "reset-db": "node scripts/resetAndSeedFromExcel.js"
   },

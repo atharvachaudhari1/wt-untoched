@@ -36,11 +36,18 @@ exports.dashboard = async (req, res, next) => {
 
 exports.getMentor = async (req, res, next) => {
   try {
-    const profile = await StudentProfile.findOne({ user: req.user.id }).populate('mentor');
-    if (!profile || !profile.mentor) {
-      return res.status(404).json({ success: false, message: 'No mentor assigned.' });
+    const profile = await StudentProfile.findOne({ user: req.user.id });
+    if (!profile) {
+      return res.json({ success: true, mentor: null });
     }
-    const mentorProfile = await TeacherProfile.findById(profile.mentor._id).populate('user', 'name email');
+    const mentorId = profile.mentor && (profile.mentor._id || profile.mentor);
+    if (!mentorId) {
+      return res.json({ success: true, mentor: null });
+    }
+    const mentorProfile = await TeacherProfile.findById(mentorId).populate('user', 'name email');
+    if (!mentorProfile) {
+      return res.json({ success: true, mentor: null });
+    }
     res.json({ success: true, mentor: mentorProfile });
   } catch (err) {
     next(err);

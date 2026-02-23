@@ -45,6 +45,19 @@
     }
     if (profileCardEmail) profileCardEmail.textContent = user.email || '—';
     if (profileCardRole) profileCardRole.textContent = (user.role || '—').replace(/^./, function (c) { return c.toUpperCase(); });
+    var rollLabel = document.getElementById('profile-card-roll-label');
+    var rollDd = document.getElementById('profile-card-roll');
+    var rollNo = user.profileId && user.profileId.rollNo != null ? String(user.profileId.rollNo).trim() : '';
+    if (rollLabel && rollDd) {
+      if (rollNo && String(user.role).toLowerCase() === 'student') {
+        rollLabel.style.display = '';
+        rollDd.style.display = '';
+        rollDd.textContent = rollNo;
+      } else {
+        rollLabel.style.display = 'none';
+        rollDd.style.display = 'none';
+      }
+    }
     if (profileCardModal) {
       profileCardModal.classList.add('is-open');
       profileCardModal.setAttribute('aria-hidden', 'false');
@@ -86,9 +99,9 @@
     var r = user.role;
     return r === 'admin' || (r && String(r).toLowerCase() === 'admin');
   }
-  if (isAdminUser() && navAdminMentors) navAdminMentors.style.display = 'flex';
-  if (isAdminUser() && navAdminActivities) navAdminActivities.style.display = 'flex';
-  if (isAdminUser() && navAdminStudentProgress) navAdminStudentProgress.style.display = 'flex';
+  if (isAdminUser() && navAdminMentors) { navAdminMentors.style.display = 'flex'; navAdminMentors.style.visibility = 'visible'; }
+  if (isAdminUser() && navAdminActivities) { navAdminActivities.style.display = 'flex'; navAdminActivities.style.visibility = 'visible'; }
+  if (isAdminUser() && navAdminStudentProgress) { navAdminStudentProgress.style.display = 'flex'; navAdminStudentProgress.style.visibility = 'visible'; }
 
   function showPanel(pageId) {
     contentPanels.forEach(function (p) {
@@ -380,21 +393,27 @@
 
   function loadMentorsPanel() {
     var card = document.getElementById('mentor-info-card');
-    if (!card || typeof ECS_API === 'undefined' || !user || user.role !== 'student') return;
+    if (!card || typeof ECS_API === 'undefined') return;
+    if (!user || String(user.role).toLowerCase() !== 'student') {
+      card.innerHTML = '<p class="text-muted">Mentor info is shown when you are logged in as a <strong>Student</strong>.</p>';
+      return;
+    }
+    card.innerHTML = '<p class="text-muted">Loading…</p>';
     ECS_API.student.mentor()
       .then(function (data) {
-        var m = data.mentor;
+        var m = data && data.mentor;
         if (!m || !m.user) {
-          card.innerHTML = '<p class="text-muted">No mentor assigned yet.</p>';
+          card.innerHTML = '<p class="text-muted">No mentor assigned yet. Ask admin to assign one from <strong>Assign mentors</strong>.</p>';
           return;
         }
         var name = (m.user.name || 'Mentor').replace(/</g, '&lt;');
         var email = (m.user.email || '').replace(/</g, '&lt;');
         var dept = (m.department || '').replace(/</g, '&lt;');
-        card.innerHTML = '<p><strong>' + name + '</strong></p><p>Email: ' + email + '</p><p>Department: ' + dept + '</p>';
+        var des = (m.designation || '').replace(/</g, '&lt;');
+        card.innerHTML = '<p><strong>' + name + '</strong></p><p>Email: ' + email + '</p><p>Department: ' + dept + '</p>' + (des ? '<p>Designation: ' + des + '</p>' : '');
       })
-      .catch(function () {
-        card.innerHTML = '<p class="text-muted">No mentor assigned or could not load.</p>';
+      .catch(function (err) {
+        card.innerHTML = '<p class="text-muted">Could not load mentor. ' + (err && err.message ? err.message.replace(/</g, '&lt;') : '') + '</p>';
       });
   }
 
@@ -584,21 +603,24 @@
       return;
     }
     tbody.innerHTML = '<tr id="progress-course-attendance-loading"><td colspan="4" class="text-muted">Loading…</td></tr>';
-    var TIMEOUT_MS = 4000;
-    var timeoutPromise = new Promise(function (_, reject) {
-      setTimeout(function () { reject(new Error('Request timed out. Is the backend running on port 3000?')); }, TIMEOUT_MS);
-    });
+    var TIMEOUT_MS = 6000;
+    var loadingCleared = false;
     function setTableBody(html) {
+      if (loadingCleared) return;
+      loadingCleared = true;
       var t = document.getElementById('progress-course-attendance-tbody');
       if (t) t.innerHTML = html;
       var retryLink = document.getElementById('progress-course-retry');
       if (retryLink) retryLink.onclick = function (e) { e.preventDefault(); loadProgressCourseAttendance(); };
     }
+    var timeoutPromise = new Promise(function (_, reject) {
+      setTimeout(function () { reject(new Error('Request timed out. Make sure the backend is running (e.g. in backend folder: npm run dev).')); }, TIMEOUT_MS);
+    });
     var requestPromise = ECS_API.student.courseAttendance();
     Promise.race([requestPromise, timeoutPromise]).then(function (data) {
       var list = (data && data.courseAttendance) ? data.courseAttendance : [];
       if (!list.length) {
-        setTableBody('<tr><td colspan="4" class="text-muted">No course attendance records yet.</td></tr>');
+        setTableBody('<tr><td colspan="4" class="text-muted">No course attendance records yet. Upload attendance data or run the course-attendance seed (see backend/scripts).</td></tr>');
         return;
       }
       setTableBody(list.map(function (c) {
@@ -613,12 +635,11 @@
       setTableBody('<tr><td colspan="4" class="text-muted">Could not load. ' + msg.replace(/</g, '&lt;') + ' <a href="#" id="progress-course-retry">Retry</a></td></tr>');
     });
     setTimeout(function () {
-      var t = document.getElementById('progress-course-attendance-tbody');
       var loadingRow = document.getElementById('progress-course-attendance-loading');
-      if (t && loadingRow && t.contains(loadingRow)) {
-        setTableBody('<tr><td colspan="4" class="text-muted">Could not load. <a href="#" id="progress-course-retry">Retry</a></td></tr>');
+      if (loadingRow && loadingRow.closest('tbody')) {
+        setTableBody('<tr><td colspan="4" class="text-muted">Could not load. Backend may be stopped. <a href="#" id="progress-course-retry">Retry</a></td></tr>');
       }
-    }, 5000);
+    }, TIMEOUT_MS + 1000);
   }
 
   function loadProgressActivitiesList() {

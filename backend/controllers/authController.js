@@ -38,7 +38,10 @@ exports.login = async (req, res, next) => {
     }
 
     const token = generateToken(user._id);
-    const userObj = await User.findById(user._id).select('-password');
+    let userObj = await User.findById(user._id).select('-password');
+    if (userObj && userObj.profileId && (userObj.profileModel === 'StudentProfile' || user.role === 'student')) {
+      userObj = await User.findById(user._id).select('-password').populate('profileId', 'rollNo department year');
+    }
     return res.status(200).json({
       success: true,
       token,
