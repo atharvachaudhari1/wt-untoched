@@ -578,6 +578,11 @@
   function loadProgressCourseAttendance() {
     var tbody = document.getElementById('progress-course-attendance-tbody');
     if (!tbody || typeof ECS_API === 'undefined') return;
+    var isStudent = user && String(user.role).toLowerCase() === 'student';
+    if (!isStudent) {
+      tbody.innerHTML = '<tr><td colspan="4" class="text-muted">Course attendance (e.g. Maths) is shown when you are logged in as a <strong>Student</strong>. Log out and sign in with a student account (rollno@ecs.edu) to see your marks.</td></tr>';
+      return;
+    }
     tbody.innerHTML = '<tr id="progress-course-attendance-loading"><td colspan="4" class="text-muted">Loading…</td></tr>';
     var TIMEOUT_MS = 4000;
     var timeoutPromise = new Promise(function (_, reject) {
