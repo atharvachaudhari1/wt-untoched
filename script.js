@@ -578,13 +578,13 @@
   function loadProgressCourseAttendance() {
     var tbody = document.getElementById('progress-course-attendance-tbody');
     if (!tbody || typeof ECS_API === 'undefined') return;
-    var timeoutId = setTimeout(function () {
-      if (tbody && tbody.innerHTML.indexOf('Loading') !== -1) {
-        tbody.innerHTML = '<tr><td colspan="4" class="text-muted">Could not load. Check backend is running and you are logged in as Student.</td></tr>';
-      }
-    }, 5000);
-    ECS_API.student.courseAttendance().then(function (data) {
-      clearTimeout(timeoutId);
+    tbody.innerHTML = '<tr id="progress-course-attendance-loading"><td colspan="4" class="text-muted">Loading…</td></tr>';
+    var TIMEOUT_MS = 4000;
+    var timeoutPromise = new Promise(function (_, reject) {
+      setTimeout(function () { reject(new Error('Request timed out. Is the backend running on port 3000?')); }, TIMEOUT_MS);
+    });
+    var requestPromise = ECS_API.student.courseAttendance();
+    Promise.race([requestPromise, timeoutPromise]).then(function (data) {
       if (!tbody) return;
       var list = (data && data.courseAttendance) ? data.courseAttendance : [];
       if (!list.length) {
@@ -599,7 +599,6 @@
         return '<tr><td>' + name + '</td><td>' + attended + '</td><td>' + total + '</td><td>' + pct + '</td></tr>';
       }).join('');
     }).catch(function (err) {
-      clearTimeout(timeoutId);
       if (tbody) {
         tbody.innerHTML = '<tr><td colspan="4" class="text-muted">Could not load. ' + (err && err.message ? err.message : 'Check backend and login.') + '</td></tr>';
       }
