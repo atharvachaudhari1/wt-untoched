@@ -131,12 +131,14 @@ exports.getAttendance = async (req, res, next) => {
 
 exports.getCourseAttendance = async (req, res, next) => {
   try {
-    const profile = await StudentProfile.findOne({ user: req.user.id });
+    const userId = req.user._id || req.user.id;
+    if (!userId) return res.status(401).json({ success: false, message: 'User not found.' });
+    const profile = await StudentProfile.findOne({ user: userId });
     if (!profile) return res.json({ success: true, courseAttendance: [] });
     const list = await CourseAttendance.find({ student: profile._id })
       .sort({ courseCode: 1 })
       .lean();
-    res.json({ success: true, courseAttendance: list });
+    return res.json({ success: true, courseAttendance: list });
   } catch (err) {
     next(err);
   }

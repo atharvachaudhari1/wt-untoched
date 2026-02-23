@@ -583,26 +583,37 @@
     var timeoutPromise = new Promise(function (_, reject) {
       setTimeout(function () { reject(new Error('Request timed out. Is the backend running on port 3000?')); }, TIMEOUT_MS);
     });
+    function setTableBody(html) {
+      var t = document.getElementById('progress-course-attendance-tbody');
+      if (t) t.innerHTML = html;
+      var retryLink = document.getElementById('progress-course-retry');
+      if (retryLink) retryLink.onclick = function (e) { e.preventDefault(); loadProgressCourseAttendance(); };
+    }
     var requestPromise = ECS_API.student.courseAttendance();
     Promise.race([requestPromise, timeoutPromise]).then(function (data) {
-      if (!tbody) return;
       var list = (data && data.courseAttendance) ? data.courseAttendance : [];
       if (!list.length) {
-        tbody.innerHTML = '<tr><td colspan="4" class="text-muted">No course attendance records yet.</td></tr>';
+        setTableBody('<tr><td colspan="4" class="text-muted">No course attendance records yet.</td></tr>');
         return;
       }
-      tbody.innerHTML = list.map(function (c) {
+      setTableBody(list.map(function (c) {
         var name = (c.courseName || c.courseCode || '').replace(/</g, '&lt;');
         var attended = c.attended != null ? c.attended : '—';
         var total = c.totalLectures != null ? c.totalLectures : '—';
         var pct = c.percentage != null ? (Math.round(c.percentage) + '%') : '—';
         return '<tr><td>' + name + '</td><td>' + attended + '</td><td>' + total + '</td><td>' + pct + '</td></tr>';
-      }).join('');
+      }).join(''));
     }).catch(function (err) {
-      if (tbody) {
-        tbody.innerHTML = '<tr><td colspan="4" class="text-muted">Could not load. ' + (err && err.message ? err.message : 'Check backend and login.') + '</td></tr>';
-      }
+      var msg = (err && err.message) ? err.message : 'Check backend and login.';
+      setTableBody('<tr><td colspan="4" class="text-muted">Could not load. ' + msg.replace(/</g, '&lt;') + ' <a href="#" id="progress-course-retry">Retry</a></td></tr>');
     });
+    setTimeout(function () {
+      var t = document.getElementById('progress-course-attendance-tbody');
+      var loadingRow = document.getElementById('progress-course-attendance-loading');
+      if (t && loadingRow && t.contains(loadingRow)) {
+        setTableBody('<tr><td colspan="4" class="text-muted">Could not load. <a href="#" id="progress-course-retry">Retry</a></td></tr>');
+      }
+    }, 5000);
   }
 
   function loadProgressActivitiesList() {
