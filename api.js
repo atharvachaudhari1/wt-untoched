@@ -145,6 +145,9 @@
         if (params.toString()) path += '?' + params.toString();
         return request('GET', path);
       },
+      getStudentProgress: function (studentId) {
+        return request('GET', '/admin/students/' + encodeURIComponent(studentId) + '/progress');
+      },
       teachers: function (query) {
         var q = query || {};
         var params = new URLSearchParams();

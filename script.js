@@ -399,6 +399,9 @@
     var rateLabel = document.getElementById('progress-rate-label');
     var trendChart = document.getElementById('progress-trend-chart');
     var trendLabels = document.getElementById('progress-trend-labels');
+    var progressTitle = document.getElementById('progress-page-title');
+    var adminPicker = document.getElementById('admin-progress-picker');
+    var activitySection = document.getElementById('progress-activity-section');
     if (!statAttended || !statPercent || !rateBar || !trendChart) return;
 
     function setProgressStats(attended, missed, total, percent) {
@@ -421,41 +424,95 @@
       if (trendLabels) trendLabels.innerHTML = weekLabels.map(function (l) { return '<span>' + l + '</span>'; }).join('');
     }
 
+    function renderProgressFromData(records, approvedActivities) {
+      var attended = 0, missed = 0;
+      (records || []).forEach(function (r) {
+        var s = (r.status || '').toLowerCase();
+        if (s === 'present' || s === 'late' || s === 'excused') attended++;
+        else if (s === 'absent') missed++;
+      });
+      var total = attended + missed;
+      var percent = total > 0 ? (attended / total) * 100 : 0;
+      setProgressStats(attended, missed, total, percent);
+      var now = new Date();
+      var weekCounts = [0, 0, 0, 0, 0, 0];
+      (records || []).forEach(function (r) {
+        var d = r.createdAt ? new Date(r.createdAt) : (r.session && r.session.scheduledAt ? new Date(r.session.scheduledAt) : null);
+        if (!d) return;
+        var weeksAgo = Math.floor((now - d) / (7 * 24 * 60 * 60 * 1000));
+        if (weeksAgo >= 0 && weeksAgo <= 5) {
+          var s = (r.status || '').toLowerCase();
+          if (s === 'present' || s === 'late' || s === 'excused') weekCounts[5 - weeksAgo]++;
+        }
+      });
+      setTrendBars(weekCounts);
+      loadProgressAttendanceTable(records || [], approvedActivities || []);
+    }
+
     setProgressStats(0, 0, 0, 0);
     setTrendBars([0, 0, 0, 0, 0, 0]);
+
+    if (user && user.role === 'admin') {
+      if (adminPicker) adminPicker.style.display = 'block';
+      if (activitySection) activitySection.style.display = 'none';
+      if (progressTitle) progressTitle.textContent = 'Student progress';
+      if (typeof ECS_API !== 'undefined') {
+        ECS_API.admin.students({ limit: 500 }).then(function (data) {
+          var sel = document.getElementById('admin-progress-student-select');
+          if (!sel) return;
+          var list = data.students || [];
+          sel.innerHTML = '<option value="">— Select student —</option>' + list.map(function (s) {
+            var id = (s._id && s._id.toString()) || '';
+            var name = (s.user && s.user.name) ? s.user.name : '';
+            var roll = s.rollNo || '';
+            var label = (name + ' (' + roll + ')').trim() || id;
+            return '<option value="' + id.replace(/"/g, '&quot;') + '">' + (label.replace(/</g, '&lt;')) + '</option>';
+          }).join('');
+        }).catch(function () {});
+        var loadBtn = document.getElementById('admin-progress-load-btn');
+        if (loadBtn) {
+          loadBtn.onclick = function () {
+            var sel = document.getElementById('admin-progress-student-select');
+            var studentId = sel && sel.value ? sel.value.trim() : '';
+            var nameEl = document.getElementById('admin-progress-student-name');
+            if (!studentId) {
+              if (nameEl) nameEl.textContent = '';
+              setProgressStats(0, 0, 0, 0);
+              setTrendBars([0, 0, 0, 0, 0, 0]);
+              loadProgressAttendanceTable([], []);
+              return;
+            }
+            ECS_API.admin.getStudentProgress(studentId).then(function (data) {
+              if (nameEl && data.student && data.student.user) {
+                nameEl.textContent = 'Showing: ' + (data.student.user.name || '') + ' — ' + (data.student.rollNo || '');
+              }
+              renderProgressFromData(data.attendance || [], data.approvedActivities || []);
+            }).catch(function (err) {
+              if (nameEl) nameEl.textContent = '';
+              setProgressStats(0, 0, 0, 0);
+              setTrendBars([0, 0, 0, 0, 0, 0]);
+              loadProgressAttendanceTable([], []);
+              alert(err.message || 'Could not load student progress.');
+            });
+          };
+        }
+      }
+      return;
+    }
+
+    if (activitySection) activitySection.style.display = 'none';
+    if (adminPicker) adminPicker.style.display = 'none';
+    if (progressTitle) progressTitle.textContent = 'My progress';
 
     if (typeof ECS_API === 'undefined' || !user || user.role !== 'student') return;
 
     ECS_API.student.attendance()
       .then(function (data) {
         var records = data.attendance || data.records || [];
-        var attended = 0, missed = 0;
-        records.forEach(function (r) {
-          var s = (r.status || '').toLowerCase();
-          if (s === 'present' || s === 'late' || s === 'excused') attended++;
-          else if (s === 'absent') missed++;
-        });
-        var total = attended + missed;
-        var percent = total > 0 ? (attended / total) * 100 : 0;
-        setProgressStats(attended, missed, total, percent);
+        renderProgressFromData(records, data.approvedActivities || []);
 
-        var now = new Date();
-        var weekCounts = [0, 0, 0, 0, 0, 0];
-        records.forEach(function (r) {
-          var d = r.createdAt ? new Date(r.createdAt) : (r.session && r.session.scheduledAt ? new Date(r.session.scheduledAt) : null);
-          if (!d) return;
-          var weeksAgo = Math.floor((now - d) / (7 * 24 * 60 * 60 * 1000));
-          if (weeksAgo >= 0 && weeksAgo <= 5) {
-            var s = (r.status || '').toLowerCase();
-            if (s === 'present' || s === 'late' || s === 'excused') weekCounts[5 - weeksAgo]++;
-          }
-        });
-        setTrendBars(weekCounts);
-
-        var activitySection = document.getElementById('progress-activity-section');
         if (activitySection) activitySection.style.display = 'block';
         loadProgressActivitiesList();
-        loadProgressAttendanceTable(records, data.approvedActivities || []);
       })
       .catch(function () {
         setProgressStats(0, 0, 0, 0);

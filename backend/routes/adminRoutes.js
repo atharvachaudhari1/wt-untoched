@@ -16,6 +16,7 @@ router.use(authorizeRoles('admin'));
 router.post('/users', adminController.createUser);
 router.post('/assign-mentor', adminController.assignMentor);
 router.get('/students', adminController.getAllStudents);
+router.get('/students/:studentId/progress', adminController.getStudentProgress);
 router.get('/teachers', adminController.getAllTeachers);
 router.get('/sessions', adminController.getAllSessions);
 router.get('/sessions/:id', sessionController.getSessionById);

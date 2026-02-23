@@ -1,7 +1,7 @@
 /**
  * Admin API: create users, assign mentor, view all sessions, analytics, announcements.
  */
-const { User, StudentProfile, TeacherProfile, ParentProfile, Session, Announcement } = require('../models');
+const { User, StudentProfile, TeacherProfile, ParentProfile, Session, Announcement, Attendance, StudentActivity } = require('../models');
 const bcrypt = require('bcryptjs');
 
 /**
@@ -173,6 +173,32 @@ exports.getAllTeachers = async (req, res, next) => {
       .populate('assignedStudents', 'user rollNo department year')
       .populate('assignedStudents.user', 'name email');
     res.json({ success: true, teachers });
+  } catch (err) {
+    next(err);
+  }
+};
+
+/**
+ * Admin: get a student's progress (attendance + approved activities). :studentId = StudentProfile id.
+ */
+exports.getStudentProgress = async (req, res, next) => {
+  try {
+    const { studentId } = req.params;
+    const student = await StudentProfile.findById(studentId).populate('user', 'name email').populate('mentor', 'user department').populate('mentor.user', 'name');
+    if (!student) {
+      return res.status(404).json({ success: false, message: 'Student not found.' });
+    }
+    const limit = Number(req.query.limit) || 50;
+    const [attendance, approvedActivities] = await Promise.all([
+      Attendance.find({ student: studentId })
+        .sort({ createdAt: -1 })
+        .populate('session', 'title scheduledAt')
+        .limit(limit),
+      StudentActivity.find({ student: studentId, status: 'approved' })
+        .sort({ startDate: -1 })
+        .limit(50),
+    ]);
+    res.json({ success: true, student, attendance, approvedActivities });
   } catch (err) {
     next(err);
   }
