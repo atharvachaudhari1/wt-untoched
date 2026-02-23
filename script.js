@@ -516,17 +516,17 @@
       return;
     }
 
-    if (activitySection) activitySection.style.display = 'none';
     if (adminPicker) adminPicker.classList.add('hidden');
     if (progressTitle) progressTitle.textContent = 'My progress';
 
-    if (typeof ECS_API === 'undefined' || !user || String(user.role).toLowerCase() !== 'student') return;
+    var isStudent = user && String(user.role).toLowerCase() === 'student';
+    if (activitySection) activitySection.style.display = isStudent ? 'block' : 'none';
 
-    if (activitySection) activitySection.style.display = 'block';
     loadProgressCourseAttendance();
     loadProgressActivitiesList();
 
-    ECS_API.student.attendance()
+    if (typeof ECS_API !== 'undefined' && isStudent) {
+      ECS_API.student.attendance()
       .then(function (data) {
         var records = data.attendance || data.records || [];
         renderProgressFromData(records, data.approvedActivities || []);
@@ -535,6 +535,7 @@
         setProgressStats(0, 0, 0, 0);
         setTrendBars([0, 0, 0, 0, 0, 0]);
       });
+    }
 
     var activityForm = document.getElementById('progress-activity-form');
     if (activityForm && typeof ECS_API !== 'undefined') {
@@ -576,7 +577,7 @@
 
   function loadProgressCourseAttendance() {
     var tbody = document.getElementById('progress-course-attendance-tbody');
-    if (!tbody || typeof ECS_API === 'undefined' || !user || String(user.role).toLowerCase() !== 'student') return;
+    if (!tbody || typeof ECS_API === 'undefined') return;
     var timeoutId = setTimeout(function () {
       if (tbody && tbody.innerHTML.indexOf('Loading') !== -1) {
         tbody.innerHTML = '<tr><td colspan="4" class="text-muted">Could not load. Check backend is running and you are logged in as Student.</td></tr>';
