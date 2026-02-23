@@ -577,14 +577,15 @@
   function loadProgressCourseAttendance() {
     var tbody = document.getElementById('progress-course-attendance-tbody');
     if (!tbody || typeof ECS_API === 'undefined' || !user || String(user.role).toLowerCase() !== 'student') return;
-    var timeout = setTimeout(function () {
-      if (tbody.innerHTML.indexOf('Loading') !== -1) {
-        tbody.innerHTML = '<tr><td colspan="4" class="text-muted">Could not load. Check connection and try again.</td></tr>';
+    var timeoutId = setTimeout(function () {
+      if (tbody && tbody.innerHTML.indexOf('Loading') !== -1) {
+        tbody.innerHTML = '<tr><td colspan="4" class="text-muted">Could not load. Check backend is running and you are logged in as Student.</td></tr>';
       }
-    }, 8000);
+    }, 5000);
     ECS_API.student.courseAttendance().then(function (data) {
-      clearTimeout(timeout);
-      var list = data.courseAttendance || [];
+      clearTimeout(timeoutId);
+      if (!tbody) return;
+      var list = (data && data.courseAttendance) ? data.courseAttendance : [];
       if (!list.length) {
         tbody.innerHTML = '<tr><td colspan="4" class="text-muted">No course attendance records yet.</td></tr>';
         return;
@@ -596,9 +597,11 @@
         var pct = c.percentage != null ? (Math.round(c.percentage) + '%') : '—';
         return '<tr><td>' + name + '</td><td>' + attended + '</td><td>' + total + '</td><td>' + pct + '</td></tr>';
       }).join('');
-    }).catch(function () {
-      clearTimeout(timeout);
-      tbody.innerHTML = '<tr><td colspan="4" class="text-muted">Could not load.</td></tr>';
+    }).catch(function (err) {
+      clearTimeout(timeoutId);
+      if (tbody) {
+        tbody.innerHTML = '<tr><td colspan="4" class="text-muted">Could not load. ' + (err && err.message ? err.message : 'Check backend and login.') + '</td></tr>';
+      }
     });
   }
 

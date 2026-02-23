@@ -133,7 +133,9 @@ exports.getCourseAttendance = async (req, res, next) => {
   try {
     const profile = await StudentProfile.findOne({ user: req.user.id });
     if (!profile) return res.json({ success: true, courseAttendance: [] });
-    const list = await CourseAttendance.find({ student: profile._id }).sort({ courseCode: 1 });
+    const list = await CourseAttendance.find({ student: profile._id })
+      .sort({ courseCode: 1 })
+      .lean();
     res.json({ success: true, courseAttendance: list });
   } catch (err) {
     next(err);
