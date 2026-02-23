@@ -46,6 +46,8 @@ async function findOrCreateStudent(rollNo, name) {
   if (user) {
     user.name = displayName;
     user.role = 'student';
+    // Sync password so this student can log in with roll number (same as new users)
+    user.password = password;
     await user.save();
   } else {
     user = await User.create({

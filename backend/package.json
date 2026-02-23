@@ -8,7 +8,8 @@
     "dev": "node --watch server.js",
     "seed-attendance": "node scripts/seedAttendance.js",
     "seed-mentoring": "node scripts/seedMentoringData.js",
-    "seed-mnm": "node scripts/seedMNM.js"
+    "seed-mnm": "node scripts/seedMNM.js",
+    "reset-db": "node scripts/resetAndSeedFromExcel.js"
   },
   "keywords": ["mentoring", "college", "express", "mongodb"],
   "author": "",
