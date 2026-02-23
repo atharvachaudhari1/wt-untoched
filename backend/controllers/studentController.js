@@ -1,7 +1,7 @@
 /**
  * Student API: mentor, upcoming sessions, Meet link, attendance, notes, announcements.
  */
-const { Session, StudentProfile, TeacherProfile, Attendance, StudentActivity } = require('../models');
+const { Session, StudentProfile, TeacherProfile, Attendance, StudentActivity, CourseAttendance } = require('../models');
 const { calculateMentoringHealthScore } = require('../utils/mentoringHealthScore');
 
 exports.dashboard = async (req, res, next) => {
@@ -124,6 +124,17 @@ exports.getAttendance = async (req, res, next) => {
       .sort({ startDate: -1 })
       .limit(50);
     res.json({ success: true, attendance, approvedActivities });
+  } catch (err) {
+    next(err);
+  }
+};
+
+exports.getCourseAttendance = async (req, res, next) => {
+  try {
+    const profile = await StudentProfile.findOne({ user: req.user.id });
+    if (!profile) return res.json({ success: true, courseAttendance: [] });
+    const list = await CourseAttendance.find({ student: profile._id }).sort({ courseCode: 1 });
+    res.json({ success: true, courseAttendance: list });
   } catch (err) {
     next(err);
   }

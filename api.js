@@ -110,6 +110,7 @@
       meetLink: function (sessionId) { return request('GET', '/student/sessions/' + sessionId + '/meet-link'); },
       mentor: function () { return request('GET', '/student/mentor'); },
       attendance: function () { return request('GET', '/student/attendance'); },
+      courseAttendance: function () { return request('GET', '/student/course-attendance'); },
       activities: function (query) {
         var q = query || {};
         var params = new URLSearchParams();

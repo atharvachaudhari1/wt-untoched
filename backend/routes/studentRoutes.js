@@ -18,6 +18,7 @@ router.get('/live-sessions', studentController.getLiveSessions);
 router.get('/sessions/upcoming', studentController.upcomingSessions);
 router.get('/sessions/:id/meet-link', studentController.getMeetLink);
 router.get('/attendance', studentController.getAttendance);
+router.get('/course-attendance', studentController.getCourseAttendance);
 router.get('/notes', studentController.getMentoringNotes);
 router.get('/announcements', announcementController.getAnnouncements);
 router.get('/activities', activityController.getMyActivities);

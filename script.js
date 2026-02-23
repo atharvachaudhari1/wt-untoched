@@ -80,8 +80,15 @@
   var contentPanels = document.querySelectorAll('.content-panel[data-page]');
   var navAdminMentors = document.getElementById('nav-admin-mentors');
   var navAdminActivities = document.getElementById('nav-admin-activities');
-  if (user && user.role === 'admin' && navAdminMentors) navAdminMentors.style.display = 'flex';
-  if (user && user.role === 'admin' && navAdminActivities) navAdminActivities.style.display = 'flex';
+  var navAdminStudentProgress = document.getElementById('nav-admin-student-progress');
+  function isAdminUser() {
+    if (!user) return false;
+    var r = user.role;
+    return r === 'admin' || (r && String(r).toLowerCase() === 'admin');
+  }
+  if (isAdminUser() && navAdminMentors) navAdminMentors.style.display = 'flex';
+  if (isAdminUser() && navAdminActivities) navAdminActivities.style.display = 'flex';
+  if (isAdminUser() && navAdminStudentProgress) navAdminStudentProgress.style.display = 'flex';
 
   function showPanel(pageId) {
     contentPanels.forEach(function (p) {
@@ -92,6 +99,7 @@
     });
     if (navAdminMentors) navAdminMentors.classList.toggle('active', pageId === 'admin-mentors');
     if (navAdminActivities) navAdminActivities.classList.toggle('active', pageId === 'admin-activities');
+    if (navAdminStudentProgress) navAdminStudentProgress.classList.toggle('active', pageId === 'progress');
     if (pageId === 'sessions') loadSessionsPanel();
     if (pageId === 'mentors') loadMentorsPanel();
     if (pageId === 'progress') loadProgressPanel();
@@ -452,8 +460,13 @@
     setProgressStats(0, 0, 0, 0);
     setTrendBars([0, 0, 0, 0, 0, 0]);
 
-    if (user && user.role === 'admin') {
-      if (adminPicker) adminPicker.style.display = 'block';
+    var isAdmin = (function () {
+      if (user && (user.role === 'admin' || (user.role && String(user.role).toLowerCase() === 'admin'))) return true;
+      if (navAdminStudentProgress && navAdminStudentProgress.style.display === 'flex') return true;
+      return false;
+    })();
+    if (isAdmin) {
+      if (adminPicker) { adminPicker.classList.remove('hidden'); adminPicker.setAttribute('aria-hidden', 'false'); }
       if (activitySection) activitySection.style.display = 'none';
       if (progressTitle) progressTitle.textContent = 'Student progress';
       if (typeof ECS_API !== 'undefined') {
@@ -468,7 +481,10 @@
             var label = (name + ' (' + roll + ')').trim() || id;
             return '<option value="' + id.replace(/"/g, '&quot;') + '">' + (label.replace(/</g, '&lt;')) + '</option>';
           }).join('');
-        }).catch(function () {});
+        }).catch(function () {
+          var sel = document.getElementById('admin-progress-student-select');
+          if (sel) sel.innerHTML = '<option value="">— Could not load students —</option>';
+        });
         var loadBtn = document.getElementById('admin-progress-load-btn');
         if (loadBtn) {
           loadBtn.onclick = function () {
@@ -501,18 +517,19 @@
     }
 
     if (activitySection) activitySection.style.display = 'none';
-    if (adminPicker) adminPicker.style.display = 'none';
+    if (adminPicker) adminPicker.classList.add('hidden');
     if (progressTitle) progressTitle.textContent = 'My progress';
 
-    if (typeof ECS_API === 'undefined' || !user || user.role !== 'student') return;
+    if (typeof ECS_API === 'undefined' || !user || String(user.role).toLowerCase() !== 'student') return;
+
+    if (activitySection) activitySection.style.display = 'block';
+    loadProgressCourseAttendance();
+    loadProgressActivitiesList();
 
     ECS_API.student.attendance()
       .then(function (data) {
         var records = data.attendance || data.records || [];
         renderProgressFromData(records, data.approvedActivities || []);
-
-        if (activitySection) activitySection.style.display = 'block';
-        loadProgressActivitiesList();
       })
       .catch(function () {
         setProgressStats(0, 0, 0, 0);
@@ -555,6 +572,34 @@
         });
       };
     }
+  }
+
+  function loadProgressCourseAttendance() {
+    var tbody = document.getElementById('progress-course-attendance-tbody');
+    if (!tbody || typeof ECS_API === 'undefined' || !user || String(user.role).toLowerCase() !== 'student') return;
+    var timeout = setTimeout(function () {
+      if (tbody.innerHTML.indexOf('Loading') !== -1) {
+        tbody.innerHTML = '<tr><td colspan="4" class="text-muted">Could not load. Check connection and try again.</td></tr>';
+      }
+    }, 8000);
+    ECS_API.student.courseAttendance().then(function (data) {
+      clearTimeout(timeout);
+      var list = data.courseAttendance || [];
+      if (!list.length) {
+        tbody.innerHTML = '<tr><td colspan="4" class="text-muted">No course attendance records yet.</td></tr>';
+        return;
+      }
+      tbody.innerHTML = list.map(function (c) {
+        var name = (c.courseName || c.courseCode || '').replace(/</g, '&lt;');
+        var attended = c.attended != null ? c.attended : '—';
+        var total = c.totalLectures != null ? c.totalLectures : '—';
+        var pct = c.percentage != null ? (Math.round(c.percentage) + '%') : '—';
+        return '<tr><td>' + name + '</td><td>' + attended + '</td><td>' + total + '</td><td>' + pct + '</td></tr>';
+      }).join('');
+    }).catch(function () {
+      clearTimeout(timeout);
+      tbody.innerHTML = '<tr><td colspan="4" class="text-muted">Could not load.</td></tr>';
+    });
   }
 
   function loadProgressActivitiesList() {

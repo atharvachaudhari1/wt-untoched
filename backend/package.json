@@ -7,7 +7,8 @@
     "start": "node server.js",
     "dev": "node --watch server.js",
     "seed-attendance": "node scripts/seedAttendance.js",
-    "seed-mentoring": "node scripts/seedMentoringData.js"
+    "seed-mentoring": "node scripts/seedMentoringData.js",
+    "seed-mnm": "node scripts/seedMNM.js"
   },
   "keywords": ["mentoring", "college", "express", "mongodb"],
   "author": "",
