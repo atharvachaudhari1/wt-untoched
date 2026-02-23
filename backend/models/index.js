@@ -13,4 +13,5 @@ module.exports = {
   Notification: require('./Notification'),
   Conversation: require('./Conversation'),
   Message: require('./Message'),
+  StudentActivity: require('./StudentActivity'),
 };

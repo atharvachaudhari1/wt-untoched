@@ -8,6 +8,7 @@ const { authorizeRoles } = require('../middleware/roleMiddleware');
 const adminController = require('../controllers/adminController');
 const sessionController = require('../controllers/sessionController');
 const announcementController = require('../controllers/announcementController');
+const activityController = require('../controllers/activityController');
 
 router.use(authMiddleware);
 router.use(authorizeRoles('admin'));
@@ -21,5 +22,8 @@ router.get('/sessions/:id', sessionController.getSessionById);
 router.get('/analytics', adminController.analytics);
 router.get('/announcements', adminController.getAllAnnouncements);
 router.post('/announcements', announcementController.createAnnouncement);
+router.get('/activities', activityController.getAllActivities);
+router.patch('/activities/:id/approve', activityController.approveActivity);
+router.patch('/activities/:id/reject', activityController.rejectActivity);
 
 module.exports = router;

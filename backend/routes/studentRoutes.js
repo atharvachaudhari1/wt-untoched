@@ -7,6 +7,7 @@ const authMiddleware = require('../middleware/authMiddleware');
 const { authorizeRoles } = require('../middleware/roleMiddleware');
 const studentController = require('../controllers/studentController');
 const announcementController = require('../controllers/announcementController');
+const activityController = require('../controllers/activityController');
 
 router.use(authMiddleware);
 router.use(authorizeRoles('student'));
@@ -19,5 +20,7 @@ router.get('/sessions/:id/meet-link', studentController.getMeetLink);
 router.get('/attendance', studentController.getAttendance);
 router.get('/notes', studentController.getMentoringNotes);
 router.get('/announcements', announcementController.getAnnouncements);
+router.get('/activities', activityController.getMyActivities);
+router.post('/activities', activityController.createActivity);
 
 module.exports = router;

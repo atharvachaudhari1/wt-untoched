@@ -73,6 +73,16 @@
           </svg>
           <span class="nav-label">Assign mentors</span>
         </a>
+        <a href="#" class="nav-item nav-item--admin" id="nav-admin-activities" data-page="admin-activities" aria-label="Activity requests" style="display: none;">
+          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+            <polyline points="14 2 14 8 20 8"/>
+            <line x1="16" y1="13" x2="8" y2="13"/>
+            <line x1="16" y1="17" x2="8" y2="17"/>
+            <polyline points="10 9 9 9 8 9"/>
+          </svg>
+          <span class="nav-label">Activity requests</span>
+        </a>
       </nav>
       <div class="sidebar-footer">
         <a href="#" class="nav-item" aria-label="Help">
@@ -254,6 +264,54 @@
                 <div class="progress-trend-labels" id="progress-trend-labels"></div>
               </div>
               <p class="text-muted progress-upload-hint" id="progress-upload-hint">Data will update when attendance is recorded. You can upload or sync data later.</p>
+
+              <!-- Student: Request activity (hackathon/workshop) - approved by admin for attendance -->
+              <section class="progress-activity-section" id="progress-activity-section" style="display: none;">
+                <h2 class="panel-title">Request activity (Hackathon / Workshop)</h2>
+                <p class="text-muted" style="margin-bottom: 0.75rem;">If you attend a hackathon or other college-approved activity on working days, submit a request. Admin approval is required before it appears in your attendance.</p>
+                <form id="progress-activity-form" class="activity-form">
+                  <label for="activity-type" class="settings-label">Type</label>
+                  <select id="activity-type" class="settings-select" required>
+                    <option value="hackathon">Hackathon</option>
+                    <option value="workshop">Workshop</option>
+                    <option value="event">Event</option>
+                    <option value="other">Other</option>
+                  </select>
+                  <label for="activity-title" class="settings-label">Title</label>
+                  <input type="text" id="activity-title" class="settings-input" placeholder="e.g. Smart India Hackathon 2025" required maxlength="200">
+                  <label for="activity-start-date" class="settings-label">Start date</label>
+                  <input type="date" id="activity-start-date" class="settings-input" required>
+                  <label for="activity-end-date" class="settings-label">End date</label>
+                  <input type="date" id="activity-end-date" class="settings-input" required>
+                  <label for="activity-description" class="settings-label">Description (optional)</label>
+                  <input type="text" id="activity-description" class="settings-input" placeholder="Brief description" maxlength="500">
+                  <button type="submit" class="btn-continue btn-continue--lime" style="margin-top: 0.5rem;">Submit request</button>
+                </form>
+                <p id="progress-activity-message" class="settings-message" style="margin-top: 0.5rem;"></p>
+                <h3 class="panel-title" style="margin-top: 1.5rem;">My activity requests</h3>
+                <div class="table-wrap">
+                  <table class="sessions-table" id="progress-activities-table">
+                    <thead>
+                      <tr><th>Type</th><th>Title</th><th>Date</th><th>Status</th></tr>
+                    </thead>
+                    <tbody id="progress-activities-tbody">
+                      <tr><td colspan="4" class="text-muted">Loading...</td></tr>
+                    </tbody>
+                  </table>
+                </div>
+                <h3 class="panel-title" style="margin-top: 1.5rem;">Attendance &amp; approved activities</h3>
+                <p class="text-muted" style="margin-bottom: 0.5rem;">Session attendance plus dates when you were on approved activity (e.g. hackathon).</p>
+                <div class="table-wrap">
+                  <table class="sessions-table" id="progress-attendance-table">
+                    <thead>
+                      <tr><th>Date</th><th>Type</th><th>Details</th></tr>
+                    </thead>
+                    <tbody id="progress-attendance-tbody">
+                      <tr><td colspan="3" class="text-muted">Loading...</td></tr>
+                    </tbody>
+                  </table>
+                </div>
+              </section>
             </div>
           </div>
         </div>
@@ -348,6 +406,22 @@
               <h2 class="settings-section-title">About</h2>
               <p class="text-muted">ECS Mentoring Portal — Connect with your mentor, view sessions, and stay updated.</p>
             </section>
+          </div>
+        </div>
+
+        <!-- Panel: Admin – Activity requests (approve/reject hackathon, workshop, etc.) -->
+        <div class="content-panel" id="panel-admin-activities" data-page="admin-activities">
+          <h1 class="page-title">Activity requests</h1>
+          <p class="text-muted" style="margin-bottom: 1rem;">Students submit requests for hackathons, workshops, etc. on college days. Approve so the date appears in their attendance as approved activity.</p>
+          <div class="table-wrap">
+            <table class="sessions-table" id="admin-activities-table">
+              <thead>
+                <tr><th>Student</th><th>Type</th><th>Title</th><th>Date</th><th>Status</th><th>Actions</th></tr>
+              </thead>
+              <tbody id="admin-activities-tbody">
+                <tr><td colspan="6" class="text-muted">Loading...</td></tr>
+              </tbody>
+            </table>
           </div>
         </div>
 

@@ -79,7 +79,9 @@
   var navItems = document.querySelectorAll('.sidebar-nav .nav-item[data-page]');
   var contentPanels = document.querySelectorAll('.content-panel[data-page]');
   var navAdminMentors = document.getElementById('nav-admin-mentors');
+  var navAdminActivities = document.getElementById('nav-admin-activities');
   if (user && user.role === 'admin' && navAdminMentors) navAdminMentors.style.display = 'flex';
+  if (user && user.role === 'admin' && navAdminActivities) navAdminActivities.style.display = 'flex';
 
   function showPanel(pageId) {
     contentPanels.forEach(function (p) {
@@ -89,11 +91,13 @@
       item.classList.toggle('active', item.getAttribute('data-page') === pageId);
     });
     if (navAdminMentors) navAdminMentors.classList.toggle('active', pageId === 'admin-mentors');
+    if (navAdminActivities) navAdminActivities.classList.toggle('active', pageId === 'admin-activities');
     if (pageId === 'sessions') loadSessionsPanel();
     if (pageId === 'mentors') loadMentorsPanel();
     if (pageId === 'progress') loadProgressPanel();
     if (pageId === 'chat') loadChatPanel();
     if (pageId === 'admin-mentors') loadAdminMentorsPanel();
+    if (pageId === 'admin-activities') loadAdminActivitiesPanel();
     if (pageId === 'settings') initSettingsPanel();
   }
 
@@ -447,11 +451,113 @@
           }
         });
         setTrendBars(weekCounts);
+
+        var activitySection = document.getElementById('progress-activity-section');
+        if (activitySection) activitySection.style.display = 'block';
+        loadProgressActivitiesList();
+        loadProgressAttendanceTable(records, data.approvedActivities || []);
       })
       .catch(function () {
         setProgressStats(0, 0, 0, 0);
         setTrendBars([0, 0, 0, 0, 0, 0]);
       });
+
+    var activityForm = document.getElementById('progress-activity-form');
+    if (activityForm && typeof ECS_API !== 'undefined') {
+      activityForm.onsubmit = function (e) {
+        e.preventDefault();
+        var typeEl = document.getElementById('activity-type');
+        var titleEl = document.getElementById('activity-title');
+        var startEl = document.getElementById('activity-start-date');
+        var endEl = document.getElementById('activity-end-date');
+        var descEl = document.getElementById('activity-description');
+        var msgEl = document.getElementById('progress-activity-message');
+        if (!typeEl || !titleEl || !startEl || !endEl) return;
+        var start = startEl.value;
+        var end = endEl.value;
+        if (new Date(end) < new Date(start)) {
+          if (msgEl) { msgEl.textContent = 'End date must be on or after start date.'; msgEl.className = 'settings-message settings-message--error'; }
+          return;
+        }
+        if (msgEl) { msgEl.textContent = ''; msgEl.className = 'settings-message'; }
+        ECS_API.student.createActivity({
+          type: typeEl.value,
+          title: titleEl.value.trim(),
+          startDate: start,
+          endDate: end,
+          description: descEl ? descEl.value.trim() : ''
+        }).then(function () {
+          if (msgEl) { msgEl.textContent = 'Request submitted. Admin will review.'; msgEl.className = 'settings-message settings-message--success'; }
+          activityForm.reset();
+          loadProgressActivitiesList();
+          ECS_API.student.attendance().then(function (d) {
+            loadProgressAttendanceTable(d.attendance || [], d.approvedActivities || []);
+          }).catch(function () {});
+        }).catch(function (err) {
+          if (msgEl) { msgEl.textContent = err.message || 'Failed to submit.'; msgEl.className = 'settings-message settings-message--error'; }
+        });
+      };
+    }
+  }
+
+  function loadProgressActivitiesList() {
+    var tbody = document.getElementById('progress-activities-tbody');
+    if (!tbody || typeof ECS_API === 'undefined' || !user || user.role !== 'student') return;
+    ECS_API.student.activities().then(function (data) {
+      var list = data.activities || [];
+      if (!list.length) {
+        tbody.innerHTML = '<tr><td colspan="4" class="text-muted">No activity requests yet.</td></tr>';
+        return;
+      }
+      tbody.innerHTML = list.map(function (a) {
+        var type = (a.type || '').replace(/</g, '&lt;');
+        var title = (a.title || '').replace(/</g, '&lt;');
+        var start = a.startDate ? new Date(a.startDate).toLocaleDateString() : '—';
+        var end = a.endDate ? new Date(a.endDate).toLocaleDateString() : '';
+        var dateStr = start === end ? start : start + ' – ' + end;
+        var status = (a.status || 'pending').toLowerCase();
+        var statusClass = status === 'approved' ? 'activity-status--approved' : (status === 'rejected' ? 'activity-status--rejected' : 'activity-status--pending');
+        return '<tr><td>' + type + '</td><td>' + title + '</td><td>' + dateStr + '</td><td><span class="' + statusClass + '">' + status + '</span></td></tr>';
+      }).join('');
+    }).catch(function () {
+      tbody.innerHTML = '<tr><td colspan="4" class="text-muted">Could not load.</td></tr>';
+    });
+  }
+
+  function loadProgressAttendanceTable(attendanceRecords, approvedActivities) {
+    var tbody = document.getElementById('progress-attendance-tbody');
+    if (!tbody) return;
+    var rows = [];
+    attendanceRecords.forEach(function (r) {
+      var d = r.session && r.session.scheduledAt ? new Date(r.session.scheduledAt) : (r.createdAt ? new Date(r.createdAt) : null);
+      if (!d) return;
+      var dateStr = d.toLocaleDateString();
+      var type = 'Session';
+      var details = (r.session && r.session.title ? r.session.title : 'Session') + ' – ' + (r.status || '');
+      rows.push({ date: d.getTime(), dateStr: dateStr, type: type, details: details });
+    });
+    approvedActivities.forEach(function (a) {
+      var start = a.startDate ? new Date(a.startDate) : null;
+      var end = a.endDate ? new Date(a.endDate) : (start ? new Date(start.getTime()) : null);
+      if (!start) return;
+      if (!end) end = new Date(start.getTime());
+      for (var d = new Date(start.getTime()); d <= end; d.setDate(d.getDate() + 1)) {
+        rows.push({
+          date: d.getTime(),
+          dateStr: d.toLocaleDateString(),
+          type: (a.type || 'Activity').replace(/</g, '&lt;'),
+          details: (a.title || 'Approved activity').replace(/</g, '&lt;')
+        });
+      }
+    });
+    rows.sort(function (x, y) { return y.date - x.date; });
+    if (!rows.length) {
+      tbody.innerHTML = '<tr><td colspan="3" class="text-muted">No attendance or approved activities yet.</td></tr>';
+      return;
+    }
+    tbody.innerHTML = rows.slice(0, 100).map(function (row) {
+      return '<tr><td>' + row.dateStr + '</td><td>' + row.type + '</td><td>' + row.details + '</td></tr>';
+    }).join('');
   }
 
   // ----- Chat panel -----
@@ -805,6 +911,59 @@
       renderTeachersTable(data.teachers);
     }).catch(function () {
       if (tbody) tbody.innerHTML = '<tr><td colspan="6" class="text-muted">Could not load teachers.</td></tr>';
+    });
+  }
+
+  function loadAdminActivitiesPanel() {
+    if (typeof ECS_API === 'undefined' || !user || user.role !== 'admin') return;
+    var tbody = document.getElementById('admin-activities-tbody');
+    if (!tbody) return;
+    tbody.innerHTML = '<tr><td colspan="6" class="text-muted">Loading...</td></tr>';
+    ECS_API.admin.activities({ status: 'pending', limit: 100 }).then(function (data) {
+      var list = data.activities || [];
+      if (!list.length) {
+        tbody.innerHTML = '<tr><td colspan="6" class="text-muted">No pending activity requests.</td></tr>';
+        return;
+      }
+      tbody.innerHTML = list.map(function (a) {
+        var id = (a._id && a._id.toString()) || '';
+        var studentName = (a.student && a.student.user && a.student.user.name) ? a.student.user.name.replace(/</g, '&lt;') : (a.student && a.student.rollNo) || '—';
+        var type = (a.type || '').replace(/</g, '&lt;');
+        var title = (a.title || '').replace(/</g, '&lt;');
+        var start = a.startDate ? new Date(a.startDate).toLocaleDateString() : '—';
+        var end = a.endDate ? new Date(a.endDate).toLocaleDateString() : '';
+        var dateStr = end && end !== start ? start + ' – ' + end : start;
+        return '<tr><td>' + studentName + '</td><td>' + type + '</td><td>' + title + '</td><td>' + dateStr + '</td><td>pending</td><td><button type="button" class="btn-activity-approve" data-id="' + id.replace(/"/g, '&quot;') + '">Approve</button> <button type="button" class="btn-activity-reject" data-id="' + id.replace(/"/g, '&quot;') + '">Reject</button></td></tr>';
+      }).join('');
+      tbody.querySelectorAll('.btn-activity-approve').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          var id = btn.getAttribute('data-id');
+          if (!id) return;
+          btn.disabled = true;
+          ECS_API.admin.approveActivity(id).then(function () {
+            loadAdminActivitiesPanel();
+          }).catch(function (err) {
+            alert(err.message || 'Failed to approve');
+            btn.disabled = false;
+          });
+        });
+      });
+      tbody.querySelectorAll('.btn-activity-reject').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          var id = btn.getAttribute('data-id');
+          if (!id) return;
+          var reason = window.prompt('Rejection reason (optional):');
+          btn.disabled = true;
+          ECS_API.admin.rejectActivity(id, reason ? { reason: reason } : {}).then(function () {
+            loadAdminActivitiesPanel();
+          }).catch(function (err) {
+            alert(err.message || 'Failed to reject');
+            btn.disabled = false;
+          });
+        });
+      });
+    }).catch(function () {
+      tbody.innerHTML = '<tr><td colspan="6" class="text-muted">Could not load.</td></tr>';
     });
   }
 

@@ -110,6 +110,16 @@
       meetLink: function (sessionId) { return request('GET', '/student/sessions/' + sessionId + '/meet-link'); },
       mentor: function () { return request('GET', '/student/mentor'); },
       attendance: function () { return request('GET', '/student/attendance'); },
+      activities: function (query) {
+        var q = query || {};
+        var params = new URLSearchParams();
+        if (q.status) params.set('status', q.status);
+        if (q.limit) params.set('limit', q.limit);
+        var path = '/student/activities';
+        if (params.toString()) path += '?' + params.toString();
+        return request('GET', path);
+      },
+      createActivity: function (body) { return request('POST', '/student/activities', body); },
       announcements: function () { return request('GET', '/student/announcements'); },
       notifications: function () { return request('GET', '/notifications'); }
     },
@@ -146,7 +156,19 @@
       },
       assignMentor: function (studentId, mentorId) {
         return request('POST', '/admin/assign-mentor', { studentId: studentId, mentorId: mentorId });
-      }
+      },
+      activities: function (query) {
+        var q = query || {};
+        var params = new URLSearchParams();
+        if (q.status) params.set('status', q.status);
+        if (q.studentId) params.set('studentId', q.studentId);
+        if (q.limit) params.set('limit', q.limit);
+        var path = '/admin/activities';
+        if (params.toString()) path += '?' + params.toString();
+        return request('GET', path);
+      },
+      approveActivity: function (id) { return request('PATCH', '/admin/activities/' + id + '/approve'); },
+      rejectActivity: function (id, body) { return request('PATCH', '/admin/activities/' + id + '/reject', body || {}); }
     },
     chat: {
       contacts: function () { return request('GET', '/chat/contacts'); },
