@@ -4,6 +4,8 @@
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
+const path = require('path');
+const fs = require('fs');
 const connectDB = require('./config/db');
 const config = require('./config');
 const routes = require('./routes');
@@ -16,7 +18,9 @@ const app = express();
 app.use(cors({ origin: true, credentials: false }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-
+const uploadsDir = path.join(__dirname, 'uploads');
+if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true });
+app.use('/api/uploads', express.static(uploadsDir));
 app.use('/api', routes);
 
 app.get('/health', (req, res) => {

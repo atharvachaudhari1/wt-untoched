@@ -15,4 +15,5 @@ module.exports = {
   Message: require('./Message'),
   StudentActivity: require('./StudentActivity'),
   CourseAttendance: require('./CourseAttendance'),
+  AcademicUpdate: require('./AcademicUpdate'),
 };

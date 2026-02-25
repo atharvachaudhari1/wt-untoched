@@ -45,6 +45,19 @@
     }
     if (profileCardEmail) profileCardEmail.textContent = user.email || '—';
     if (profileCardRole) profileCardRole.textContent = (user.role || '—').replace(/^./, function (c) { return c.toUpperCase(); });
+    var rollLabel = document.getElementById('profile-card-roll-label');
+    var rollDd = document.getElementById('profile-card-roll');
+    var rollNo = user.profileId && user.profileId.rollNo != null ? String(user.profileId.rollNo).trim() : '';
+    if (rollLabel && rollDd) {
+      if (rollNo && String(user.role).toLowerCase() === 'student') {
+        rollLabel.style.display = '';
+        rollDd.style.display = '';
+        rollDd.textContent = rollNo;
+      } else {
+        rollLabel.style.display = 'none';
+        rollDd.style.display = 'none';
+      }
+    }
     if (profileCardModal) {
       profileCardModal.classList.add('is-open');
       profileCardModal.setAttribute('aria-hidden', 'false');
@@ -79,7 +92,18 @@
   var navItems = document.querySelectorAll('.sidebar-nav .nav-item[data-page]');
   var contentPanels = document.querySelectorAll('.content-panel[data-page]');
   var navAdminMentors = document.getElementById('nav-admin-mentors');
-  if (user && user.role === 'admin' && navAdminMentors) navAdminMentors.style.display = 'flex';
+  var navAdminActivities = document.getElementById('nav-admin-activities');
+  var navAdminUpdates = document.getElementById('nav-admin-updates');
+  var navAdminStudentProgress = document.getElementById('nav-admin-student-progress');
+  function isAdminUser() {
+    if (!user) return false;
+    var r = user.role;
+    return r === 'admin' || (r && String(r).toLowerCase() === 'admin');
+  }
+  if (isAdminUser() && navAdminMentors) { navAdminMentors.style.display = 'flex'; navAdminMentors.style.visibility = 'visible'; }
+  if (isAdminUser() && navAdminActivities) { navAdminActivities.style.display = 'flex'; navAdminActivities.style.visibility = 'visible'; }
+  if (isAdminUser() && navAdminUpdates) { navAdminUpdates.style.display = 'flex'; navAdminUpdates.style.visibility = 'visible'; }
+  if (isAdminUser() && navAdminStudentProgress) { navAdminStudentProgress.style.display = 'flex'; navAdminStudentProgress.style.visibility = 'visible'; }
 
   function showPanel(pageId) {
     contentPanels.forEach(function (p) {
@@ -89,12 +113,18 @@
       item.classList.toggle('active', item.getAttribute('data-page') === pageId);
     });
     if (navAdminMentors) navAdminMentors.classList.toggle('active', pageId === 'admin-mentors');
+    if (navAdminActivities) navAdminActivities.classList.toggle('active', pageId === 'admin-activities');
+    if (navAdminUpdates) navAdminUpdates.classList.toggle('active', pageId === 'admin-updates');
+    if (navAdminStudentProgress) navAdminStudentProgress.classList.toggle('active', pageId === 'progress');
     if (pageId === 'sessions') loadSessionsPanel();
     if (pageId === 'mentors') loadMentorsPanel();
     if (pageId === 'progress') loadProgressPanel();
     if (pageId === 'chat') loadChatPanel();
     if (pageId === 'admin-mentors') loadAdminMentorsPanel();
+    if (pageId === 'admin-activities') loadAdminActivitiesPanel();
+    if (pageId === 'admin-updates') loadAdminAcademicUpdatesPanel();
     if (pageId === 'settings') initSettingsPanel();
+    if (pageId === 'mentoring' && user && (user.role === 'parent' || user.role === 'teacher' || String(user.role).toLowerCase() === 'admin')) loadAcademicUpdates();
   }
 
   function updateProfilePictureFromUser(u) {
@@ -300,6 +330,20 @@
 
   function loadDashboard() {
     renderSemIVCourses();
+    var studentView = document.getElementById('mentoring-student-view');
+    var academicUpdatesView = document.getElementById('mentoring-academic-updates-view');
+    var role = user && user.role ? String(user.role).toLowerCase() : '';
+    var showAcademicUpdates = role === 'parent' || role === 'teacher' || role === 'admin';
+    if (studentView && academicUpdatesView) {
+      if (showAcademicUpdates) {
+        studentView.style.display = 'none';
+        academicUpdatesView.style.display = 'block';
+        loadAcademicUpdates();
+      } else {
+        studentView.style.display = 'block';
+        academicUpdatesView.style.display = 'none';
+      }
+    }
     if (typeof ECS_API === 'undefined') return;
     if (user && user.role !== 'student') {
       renderSessionsTable([]);
@@ -366,23 +410,70 @@
       });
   }
 
+  function getApiBaseUrl() {
+    if (typeof window !== 'undefined' && window.ECS_API_BASE) return window.ECS_API_BASE;
+    var loc = typeof window !== 'undefined' && window.location;
+    if (loc) return loc.protocol + '//' + loc.hostname + (loc.port ? ':' + loc.port : '');
+    return '';
+  }
+
+  function loadAcademicUpdates() {
+    var listEl = document.getElementById('academic-updates-list');
+    if (!listEl || typeof ECS_API === 'undefined') return;
+    listEl.innerHTML = '<p class="text-muted">Loading updates...</p>';
+    ECS_API.academicUpdates.list()
+      .then(function (data) {
+        var updates = data.updates || [];
+        var base = getApiBaseUrl();
+        if (!updates.length) {
+          listEl.innerHTML = '<p class="text-muted">No academic updates yet.</p>';
+          return;
+        }
+        listEl.innerHTML = updates.map(function (u) {
+          var title = (u.title || '').replace(/</g, '&lt;').replace(/"/g, '&quot;');
+          var msg = (u.message || '').replace(/</g, '&lt;').replace(/\n/g, '<br>');
+          var dateStr = u.createdAt ? new Date(u.createdAt).toLocaleString() : '';
+          var fileHtml = '';
+          if (u.fileUrl && u.fileName) {
+            var href = (base ? base + u.fileUrl : u.fileUrl);
+            fileHtml = '<p class="academic-update-file"><a href="' + href.replace(/"/g, '&quot;') + '" target="_blank" rel="noopener">Download: ' + (u.fileName || 'file').replace(/</g, '&lt;') + '</a></p>';
+          }
+          return '<article class="academic-update-card" style="margin-bottom: 1rem; padding: 1rem; border: 1px solid #e0e0e0; border-radius: 8px;">' +
+            '<h3 style="margin: 0 0 0.5rem 0;">' + title + '</h3>' +
+            (dateStr ? '<p class="text-muted" style="margin: 0 0 0.5rem 0; font-size: 0.875rem;">' + dateStr + '</p>' : '') +
+            (msg ? '<div class="academic-update-message" style="margin-bottom: 0.5rem;">' + msg + '</div>' : '') +
+            fileHtml +
+            '</article>';
+        }).join('');
+      })
+      .catch(function () {
+        listEl.innerHTML = '<p class="text-muted">Could not load updates.</p>';
+      });
+  }
+
   function loadMentorsPanel() {
     var card = document.getElementById('mentor-info-card');
-    if (!card || typeof ECS_API === 'undefined' || !user || user.role !== 'student') return;
+    if (!card || typeof ECS_API === 'undefined') return;
+    if (!user || String(user.role).toLowerCase() !== 'student') {
+      card.innerHTML = '<p class="text-muted">Mentor info is shown when you are logged in as a <strong>Student</strong>.</p>';
+      return;
+    }
+    card.innerHTML = '<p class="text-muted">Loading…</p>';
     ECS_API.student.mentor()
       .then(function (data) {
-        var m = data.mentor;
+        var m = data && data.mentor;
         if (!m || !m.user) {
-          card.innerHTML = '<p class="text-muted">No mentor assigned yet.</p>';
+          card.innerHTML = '<p class="text-muted">No mentor assigned yet. Ask admin to assign one from <strong>Assign mentors</strong>.</p>';
           return;
         }
         var name = (m.user.name || 'Mentor').replace(/</g, '&lt;');
         var email = (m.user.email || '').replace(/</g, '&lt;');
         var dept = (m.department || '').replace(/</g, '&lt;');
-        card.innerHTML = '<p><strong>' + name + '</strong></p><p>Email: ' + email + '</p><p>Department: ' + dept + '</p>';
+        var des = (m.designation || '').replace(/</g, '&lt;');
+        card.innerHTML = '<p><strong>' + name + '</strong></p><p>Email: ' + email + '</p><p>Department: ' + dept + '</p>' + (des ? '<p>Designation: ' + des + '</p>' : '');
       })
-      .catch(function () {
-        card.innerHTML = '<p class="text-muted">No mentor assigned or could not load.</p>';
+      .catch(function (err) {
+        card.innerHTML = '<p class="text-muted">Could not load mentor. ' + (err && err.message ? err.message.replace(/</g, '&lt;') : '') + '</p>';
       });
   }
 
@@ -395,6 +486,9 @@
     var rateLabel = document.getElementById('progress-rate-label');
     var trendChart = document.getElementById('progress-trend-chart');
     var trendLabels = document.getElementById('progress-trend-labels');
+    var progressTitle = document.getElementById('progress-page-title');
+    var adminPicker = document.getElementById('admin-progress-picker');
+    var activitySection = document.getElementById('progress-activity-section');
     if (!statAttended || !statPercent || !rateBar || !trendChart) return;
 
     function setProgressStats(attended, missed, total, percent) {
@@ -417,41 +511,273 @@
       if (trendLabels) trendLabels.innerHTML = weekLabels.map(function (l) { return '<span>' + l + '</span>'; }).join('');
     }
 
+    function renderProgressFromData(records, approvedActivities) {
+      var attended = 0, missed = 0;
+      (records || []).forEach(function (r) {
+        var s = (r.status || '').toLowerCase();
+        if (s === 'present' || s === 'late' || s === 'excused') attended++;
+        else if (s === 'absent') missed++;
+      });
+      var total = attended + missed;
+      var percent = total > 0 ? (attended / total) * 100 : 0;
+      setProgressStats(attended, missed, total, percent);
+      var now = new Date();
+      var weekCounts = [0, 0, 0, 0, 0, 0];
+      (records || []).forEach(function (r) {
+        var d = r.createdAt ? new Date(r.createdAt) : (r.session && r.session.scheduledAt ? new Date(r.session.scheduledAt) : null);
+        if (!d) return;
+        var weeksAgo = Math.floor((now - d) / (7 * 24 * 60 * 60 * 1000));
+        if (weeksAgo >= 0 && weeksAgo <= 5) {
+          var s = (r.status || '').toLowerCase();
+          if (s === 'present' || s === 'late' || s === 'excused') weekCounts[5 - weeksAgo]++;
+        }
+      });
+      setTrendBars(weekCounts);
+      loadProgressAttendanceTable(records || [], approvedActivities || []);
+    }
+
     setProgressStats(0, 0, 0, 0);
     setTrendBars([0, 0, 0, 0, 0, 0]);
 
-    if (typeof ECS_API === 'undefined' || !user || user.role !== 'student') return;
+    var isAdmin = (function () {
+      if (user && (user.role === 'admin' || (user.role && String(user.role).toLowerCase() === 'admin'))) return true;
+      if (navAdminStudentProgress && navAdminStudentProgress.style.display === 'flex') return true;
+      return false;
+    })();
+    if (isAdmin) {
+      if (adminPicker) { adminPicker.classList.remove('hidden'); adminPicker.setAttribute('aria-hidden', 'false'); }
+      if (activitySection) activitySection.style.display = 'none';
+      if (progressTitle) progressTitle.textContent = 'Student progress';
+      var courseTbody = document.getElementById('progress-course-attendance-tbody');
+      if (courseTbody) courseTbody.innerHTML = '<tr><td colspan="4" class="text-muted">Select a student above and click View progress to see their course attendance (Marks).</td></tr>';
+      if (typeof ECS_API !== 'undefined') {
+        ECS_API.admin.students({ limit: 500 }).then(function (data) {
+          var sel = document.getElementById('admin-progress-student-select');
+          if (!sel) return;
+          var list = data.students || [];
+          sel.innerHTML = '<option value="">— Select student —</option>' + list.map(function (s) {
+            var id = (s._id && s._id.toString()) || '';
+            var name = (s.user && s.user.name) ? s.user.name : '';
+            var roll = s.rollNo || '';
+            var label = (name + ' (' + roll + ')').trim() || id;
+            return '<option value="' + id.replace(/"/g, '&quot;') + '">' + (label.replace(/</g, '&lt;')) + '</option>';
+          }).join('');
+        }).catch(function () {
+          var sel = document.getElementById('admin-progress-student-select');
+          if (sel) sel.innerHTML = '<option value="">— Could not load students —</option>';
+        });
+        var loadBtn = document.getElementById('admin-progress-load-btn');
+        if (loadBtn) {
+          loadBtn.onclick = function () {
+            var sel = document.getElementById('admin-progress-student-select');
+            var studentId = sel && sel.value ? sel.value.trim() : '';
+            var nameEl = document.getElementById('admin-progress-student-name');
+            if (!studentId) {
+              if (nameEl) nameEl.textContent = '';
+              setProgressStats(0, 0, 0, 0);
+              setTrendBars([0, 0, 0, 0, 0, 0]);
+              loadProgressAttendanceTable([], []);
+              var ct = document.getElementById('progress-course-attendance-tbody');
+              if (ct) ct.innerHTML = '<tr><td colspan="4" class="text-muted">Select a student above and click View progress to see their course attendance (Marks).</td></tr>';
+              return;
+            }
+            ECS_API.admin.getStudentProgress(studentId).then(function (data) {
+              if (nameEl && data.student && data.student.user) {
+                nameEl.textContent = 'Showing: ' + (data.student.user.name || '') + ' — ' + (data.student.rollNo || '');
+              }
+              renderProgressFromData(data.attendance || [], data.approvedActivities || []);
+              var list = (data.courseAttendance || []);
+              var ct = document.getElementById('progress-course-attendance-tbody');
+              if (ct) {
+                if (!list.length) ct.innerHTML = '<tr><td colspan="4" class="text-muted">No course attendance records for this student.</td></tr>';
+                else ct.innerHTML = list.map(function (c) {
+                  var name = (c.courseName || c.courseCode || '').replace(/</g, '&lt;');
+                  var attended = c.attended != null ? c.attended : '—';
+                  var total = c.totalLectures != null ? c.totalLectures : '—';
+                  var pct = c.percentage != null ? (Math.round(c.percentage) + '%') : '—';
+                  return '<tr><td>' + name + '</td><td>' + attended + '</td><td>' + total + '</td><td>' + pct + '</td></tr>';
+                }).join('');
+              }
+            }).catch(function (err) {
+              if (nameEl) nameEl.textContent = '';
+              setProgressStats(0, 0, 0, 0);
+              setTrendBars([0, 0, 0, 0, 0, 0]);
+              loadProgressAttendanceTable([], []);
+              var ct = document.getElementById('progress-course-attendance-tbody');
+              if (ct) ct.innerHTML = '<tr><td colspan="4" class="text-muted">Select a student above and click View progress to see their course attendance (Marks).</td></tr>';
+              alert(err.message || 'Could not load student progress.');
+            });
+          };
+        }
+      }
+      return;
+    }
 
-    ECS_API.student.attendance()
+    if (adminPicker) adminPicker.classList.add('hidden');
+    if (progressTitle) progressTitle.textContent = 'My progress';
+
+    var isStudent = user && String(user.role).toLowerCase() === 'student';
+    if (activitySection) activitySection.style.display = isStudent ? 'block' : 'none';
+
+    loadProgressCourseAttendance();
+    loadProgressActivitiesList();
+
+    if (typeof ECS_API !== 'undefined' && isStudent) {
+      ECS_API.student.attendance()
       .then(function (data) {
         var records = data.attendance || data.records || [];
-        var attended = 0, missed = 0;
-        records.forEach(function (r) {
-          var s = (r.status || '').toLowerCase();
-          if (s === 'present' || s === 'late' || s === 'excused') attended++;
-          else if (s === 'absent') missed++;
-        });
-        var total = attended + missed;
-        var percent = total > 0 ? (attended / total) * 100 : 0;
-        setProgressStats(attended, missed, total, percent);
-
-        var now = new Date();
-        var weekCounts = [0, 0, 0, 0, 0, 0];
-        records.forEach(function (r) {
-          var d = r.createdAt ? new Date(r.createdAt) : (r.session && r.session.scheduledAt ? new Date(r.session.scheduledAt) : null);
-          if (!d) return;
-          var weeksAgo = Math.floor((now - d) / (7 * 24 * 60 * 60 * 1000));
-          if (weeksAgo >= 0 && weeksAgo <= 5) {
-            var s = (r.status || '').toLowerCase();
-            if (s === 'present' || s === 'late' || s === 'excused') weekCounts[5 - weeksAgo]++;
-          }
-        });
-        setTrendBars(weekCounts);
+        renderProgressFromData(records, data.approvedActivities || []);
       })
       .catch(function () {
         setProgressStats(0, 0, 0, 0);
         setTrendBars([0, 0, 0, 0, 0, 0]);
       });
+    }
+
+    var activityForm = document.getElementById('progress-activity-form');
+    if (activityForm && typeof ECS_API !== 'undefined') {
+      activityForm.onsubmit = function (e) {
+        e.preventDefault();
+        var typeEl = document.getElementById('activity-type');
+        var titleEl = document.getElementById('activity-title');
+        var startEl = document.getElementById('activity-start-date');
+        var endEl = document.getElementById('activity-end-date');
+        var descEl = document.getElementById('activity-description');
+        var msgEl = document.getElementById('progress-activity-message');
+        if (!typeEl || !titleEl || !startEl || !endEl) return;
+        var start = startEl.value;
+        var end = endEl.value;
+        if (new Date(end) < new Date(start)) {
+          if (msgEl) { msgEl.textContent = 'End date must be on or after start date.'; msgEl.className = 'settings-message settings-message--error'; }
+          return;
+        }
+        if (msgEl) { msgEl.textContent = ''; msgEl.className = 'settings-message'; }
+        ECS_API.student.createActivity({
+          type: typeEl.value,
+          title: titleEl.value.trim(),
+          startDate: start,
+          endDate: end,
+          description: descEl ? descEl.value.trim() : ''
+        }).then(function () {
+          if (msgEl) { msgEl.textContent = 'Request submitted. Admin will review.'; msgEl.className = 'settings-message settings-message--success'; }
+          activityForm.reset();
+          loadProgressActivitiesList();
+          ECS_API.student.attendance().then(function (d) {
+            loadProgressAttendanceTable(d.attendance || [], d.approvedActivities || []);
+          }).catch(function () {});
+        }).catch(function (err) {
+          if (msgEl) { msgEl.textContent = err.message || 'Failed to submit.'; msgEl.className = 'settings-message settings-message--error'; }
+        });
+      };
+    }
+  }
+
+  function loadProgressCourseAttendance() {
+    var tbody = document.getElementById('progress-course-attendance-tbody');
+    if (!tbody || typeof ECS_API === 'undefined') return;
+    var isStudent = user && String(user.role).toLowerCase() === 'student';
+    if (!isStudent) {
+      tbody.innerHTML = '<tr><td colspan="4" class="text-muted">Course attendance (e.g. Maths) is shown when you are logged in as a <strong>Student</strong>. Log out and sign in with a student account (rollno@ecs.edu) to see your marks.</td></tr>';
+      return;
+    }
+    tbody.innerHTML = '<tr id="progress-course-attendance-loading"><td colspan="4" class="text-muted">Loading…</td></tr>';
+    var TIMEOUT_MS = 6000;
+    var loadingCleared = false;
+    function setTableBody(html) {
+      if (loadingCleared) return;
+      loadingCleared = true;
+      var t = document.getElementById('progress-course-attendance-tbody');
+      if (t) t.innerHTML = html;
+      var retryLink = document.getElementById('progress-course-retry');
+      if (retryLink) retryLink.onclick = function (e) { e.preventDefault(); loadProgressCourseAttendance(); };
+    }
+    var timeoutPromise = new Promise(function (_, reject) {
+      setTimeout(function () { reject(new Error('Request timed out. Make sure the backend is running (e.g. in backend folder: npm run dev).')); }, TIMEOUT_MS);
+    });
+    var requestPromise = ECS_API.student.courseAttendance();
+    Promise.race([requestPromise, timeoutPromise]).then(function (data) {
+      var list = (data && data.courseAttendance) ? data.courseAttendance : [];
+      if (!list.length) {
+        setTableBody('<tr><td colspan="4" class="text-muted">No course attendance records yet. Upload attendance data or run the course-attendance seed (see backend/scripts).</td></tr>');
+        return;
+      }
+      setTableBody(list.map(function (c) {
+        var name = (c.courseName || c.courseCode || '').replace(/</g, '&lt;');
+        var attended = c.attended != null ? c.attended : '—';
+        var total = c.totalLectures != null ? c.totalLectures : '—';
+        var pct = c.percentage != null ? (Math.round(c.percentage) + '%') : '—';
+        return '<tr><td>' + name + '</td><td>' + attended + '</td><td>' + total + '</td><td>' + pct + '</td></tr>';
+      }).join(''));
+    }).catch(function (err) {
+      var msg = (err && err.message) ? err.message : 'Check backend and login.';
+      setTableBody('<tr><td colspan="4" class="text-muted">Could not load. ' + msg.replace(/</g, '&lt;') + ' <a href="#" id="progress-course-retry">Retry</a></td></tr>');
+    });
+    setTimeout(function () {
+      var loadingRow = document.getElementById('progress-course-attendance-loading');
+      if (loadingRow && loadingRow.closest('tbody')) {
+        setTableBody('<tr><td colspan="4" class="text-muted">Could not load. Backend may be stopped. <a href="#" id="progress-course-retry">Retry</a></td></tr>');
+      }
+    }, TIMEOUT_MS + 1000);
+  }
+
+  function loadProgressActivitiesList() {
+    var tbody = document.getElementById('progress-activities-tbody');
+    if (!tbody || typeof ECS_API === 'undefined' || !user || user.role !== 'student') return;
+    ECS_API.student.activities().then(function (data) {
+      var list = data.activities || [];
+      if (!list.length) {
+        tbody.innerHTML = '<tr><td colspan="4" class="text-muted">No activity requests yet.</td></tr>';
+        return;
+      }
+      tbody.innerHTML = list.map(function (a) {
+        var type = (a.type || '').replace(/</g, '&lt;');
+        var title = (a.title || '').replace(/</g, '&lt;');
+        var start = a.startDate ? new Date(a.startDate).toLocaleDateString() : '—';
+        var end = a.endDate ? new Date(a.endDate).toLocaleDateString() : '';
+        var dateStr = start === end ? start : start + ' – ' + end;
+        var status = (a.status || 'pending').toLowerCase();
+        var statusClass = status === 'approved' ? 'activity-status--approved' : (status === 'rejected' ? 'activity-status--rejected' : 'activity-status--pending');
+        return '<tr><td>' + type + '</td><td>' + title + '</td><td>' + dateStr + '</td><td><span class="' + statusClass + '">' + status + '</span></td></tr>';
+      }).join('');
+    }).catch(function () {
+      tbody.innerHTML = '<tr><td colspan="4" class="text-muted">Could not load.</td></tr>';
+    });
+  }
+
+  function loadProgressAttendanceTable(attendanceRecords, approvedActivities) {
+    var tbody = document.getElementById('progress-attendance-tbody');
+    if (!tbody) return;
+    var rows = [];
+    attendanceRecords.forEach(function (r) {
+      var d = r.session && r.session.scheduledAt ? new Date(r.session.scheduledAt) : (r.createdAt ? new Date(r.createdAt) : null);
+      if (!d) return;
+      var dateStr = d.toLocaleDateString();
+      var type = 'Session';
+      var details = (r.session && r.session.title ? r.session.title : 'Session') + ' – ' + (r.status || '');
+      rows.push({ date: d.getTime(), dateStr: dateStr, type: type, details: details });
+    });
+    approvedActivities.forEach(function (a) {
+      var start = a.startDate ? new Date(a.startDate) : null;
+      var end = a.endDate ? new Date(a.endDate) : (start ? new Date(start.getTime()) : null);
+      if (!start) return;
+      if (!end) end = new Date(start.getTime());
+      for (var d = new Date(start.getTime()); d <= end; d.setDate(d.getDate() + 1)) {
+        rows.push({
+          date: d.getTime(),
+          dateStr: d.toLocaleDateString(),
+          type: (a.type || 'Activity').replace(/</g, '&lt;'),
+          details: (a.title || 'Approved activity').replace(/</g, '&lt;')
+        });
+      }
+    });
+    rows.sort(function (x, y) { return y.date - x.date; });
+    if (!rows.length) {
+      tbody.innerHTML = '<tr><td colspan="3" class="text-muted">No attendance or approved activities yet.</td></tr>';
+      return;
+    }
+    tbody.innerHTML = rows.slice(0, 100).map(function (row) {
+      return '<tr><td>' + row.dateStr + '</td><td>' + row.type + '</td><td>' + row.details + '</td></tr>';
+    }).join('');
   }
 
   // ----- Chat panel -----
@@ -688,14 +1014,52 @@
 
   var assignStudentsModal = document.getElementById('assign-students-modal');
   var assignStudentsTitle = document.getElementById('assign-students-modal-title');
+  var assignStudentsSearch = document.getElementById('assign-students-search');
   var assignStudentsList = document.getElementById('assign-students-list');
   var assignStudentsMessage = document.getElementById('assign-students-message');
   var assignStudentsSubmit = document.getElementById('assign-students-submit');
   var assignStudentsModalClose = document.getElementById('assign-students-modal-close');
   var currentAssignMentorId = null;
+  var assignStudentsAll = [];
+
+  function renderAssignStudentsList(students, preserveChecked) {
+    if (!assignStudentsList) return;
+    var checkedIds = {};
+    if (preserveChecked && assignStudentsModal) {
+      assignStudentsModal.querySelectorAll('.assign-student-cb:checked').forEach(function (cb) { checkedIds[cb.value] = true; });
+    }
+    if (!students.length) {
+      assignStudentsList.innerHTML = '<p class="text-muted">No students match your search.</p>';
+      return;
+    }
+    assignStudentsList.innerHTML = '<div class="assign-students-checkboxes">' + students.map(function (s) {
+      var id = (s._id && s._id.toString()) || '';
+      var name = (s.user && s.user.name) || '';
+      var roll = s.rollNo || '';
+      var label = (name && roll ? name + ' (' + roll + ')' : (name || roll || 'Student')).replace(/</g, '&lt;');
+      var checked = preserveChecked && checkedIds[id] ? ' checked' : '';
+      return '<label class="assign-student-row"><input type="checkbox" class="assign-student-cb" value="' + id + '"' + checked + '> ' + label + '</label>';
+    }).join('') + '</div>';
+  }
+
+  function filterAssignStudentsBySearch() {
+    var q = (assignStudentsSearch && assignStudentsSearch.value) ? assignStudentsSearch.value.trim().toLowerCase() : '';
+    if (!q) {
+      renderAssignStudentsList(assignStudentsAll, true);
+      return;
+    }
+    var filtered = assignStudentsAll.filter(function (s) {
+      var name = (s.user && s.user.name) || '';
+      var roll = (s.rollNo || '').toString();
+      return name.toLowerCase().indexOf(q) !== -1 || roll.toLowerCase().indexOf(q) !== -1;
+    });
+    renderAssignStudentsList(filtered, true);
+  }
 
   function openAssignStudentsModal(teacherId, teacherName) {
     currentAssignMentorId = teacherId;
+    assignStudentsAll = [];
+    if (assignStudentsSearch) { assignStudentsSearch.value = ''; }
     if (assignStudentsTitle) assignStudentsTitle.textContent = 'Assign students to ' + (teacherName || 'this mentor');
     if (assignStudentsList) assignStudentsList.innerHTML = '<p class="text-muted">Loading students...</p>';
     if (assignStudentsMessage) assignStudentsMessage.textContent = '';
@@ -706,18 +1070,13 @@
     if (typeof ECS_API === 'undefined') return;
     ECS_API.admin.students().then(function (data) {
       var students = data.students || [];
+      assignStudentsAll = students;
       if (!assignStudentsList) return;
       if (!students.length) {
         assignStudentsList.innerHTML = '<p class="text-muted">No students found.</p>';
         return;
       }
-      assignStudentsList.innerHTML = '<div class="assign-students-checkboxes">' + students.map(function (s) {
-        var id = (s._id && s._id.toString()) || '';
-        var name = (s.user && s.user.name) || '';
-        var roll = s.rollNo || '';
-        var label = (name && roll ? name + ' (' + roll + ')' : (name || roll || 'Student')).replace(/</g, '&lt;');
-        return '<label class="assign-student-row"><input type="checkbox" class="assign-student-cb" value="' + id + '"> ' + label + '</label>';
-      }).join('') + '</div>';
+      renderAssignStudentsList(students, false);
     }).catch(function () {
       if (assignStudentsList) assignStudentsList.innerHTML = '<p class="text-muted">Could not load students.</p>';
     });
@@ -735,6 +1094,7 @@
   if (assignStudentsModal) assignStudentsModal.addEventListener('click', function (e) {
     if (e.target === assignStudentsModal) closeAssignStudentsModal();
   });
+  if (assignStudentsSearch) assignStudentsSearch.addEventListener('input', filterAssignStudentsBySearch);
 
   if (assignStudentsSubmit) {
     assignStudentsSubmit.addEventListener('click', function () {
@@ -808,7 +1168,141 @@
     });
   }
 
+  function loadAdminActivitiesPanel() {
+    if (typeof ECS_API === 'undefined' || !user || user.role !== 'admin') return;
+    var tbody = document.getElementById('admin-activities-tbody');
+    if (!tbody) return;
+    tbody.innerHTML = '<tr><td colspan="6" class="text-muted">Loading...</td></tr>';
+    ECS_API.admin.activities({ status: 'pending', limit: 100 }).then(function (data) {
+      var list = data.activities || [];
+      if (!list.length) {
+        tbody.innerHTML = '<tr><td colspan="6" class="text-muted">No pending activity requests.</td></tr>';
+        return;
+      }
+      tbody.innerHTML = list.map(function (a) {
+        var id = (a._id && a._id.toString()) || '';
+        var studentName = (a.student && a.student.user && a.student.user.name) ? a.student.user.name.replace(/</g, '&lt;') : (a.student && a.student.rollNo) || '—';
+        var type = (a.type || '').replace(/</g, '&lt;');
+        var title = (a.title || '').replace(/</g, '&lt;');
+        var start = a.startDate ? new Date(a.startDate).toLocaleDateString() : '—';
+        var end = a.endDate ? new Date(a.endDate).toLocaleDateString() : '';
+        var dateStr = end && end !== start ? start + ' – ' + end : start;
+        return '<tr><td>' + studentName + '</td><td>' + type + '</td><td>' + title + '</td><td>' + dateStr + '</td><td>pending</td><td><button type="button" class="btn-activity-approve" data-id="' + id.replace(/"/g, '&quot;') + '">Approve</button> <button type="button" class="btn-activity-reject" data-id="' + id.replace(/"/g, '&quot;') + '">Reject</button></td></tr>';
+      }).join('');
+      tbody.querySelectorAll('.btn-activity-approve').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          var id = btn.getAttribute('data-id');
+          if (!id) return;
+          btn.disabled = true;
+          ECS_API.admin.approveActivity(id).then(function () {
+            loadAdminActivitiesPanel();
+          }).catch(function (err) {
+            alert(err.message || 'Failed to approve');
+            btn.disabled = false;
+          });
+        });
+      });
+      tbody.querySelectorAll('.btn-activity-reject').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          var id = btn.getAttribute('data-id');
+          if (!id) return;
+          var reason = window.prompt('Rejection reason (optional):');
+          btn.disabled = true;
+          ECS_API.admin.rejectActivity(id, reason ? { reason: reason } : {}).then(function () {
+            loadAdminActivitiesPanel();
+          }).catch(function (err) {
+            alert(err.message || 'Failed to reject');
+            btn.disabled = false;
+          });
+        });
+      });
+    }).catch(function () {
+      tbody.innerHTML = '<tr><td colspan="6" class="text-muted">Could not load.</td></tr>';
+    });
+  }
+
+  function loadAdminAcademicUpdatesPanel() {
+    if (typeof ECS_API === 'undefined' || !user || user.role !== 'admin') return;
+    var listEl = document.getElementById('admin-academic-updates-list');
+    if (!listEl) return;
+    listEl.innerHTML = '<p class="text-muted">Loading...</p>';
+    ECS_API.admin.getAcademicUpdates()
+      .then(function (data) {
+        var updates = data.updates || [];
+        var base = getApiBaseUrl();
+        if (!updates.length) {
+          listEl.innerHTML = '<p class="text-muted">No updates yet. Publish one using the form above.</p>';
+          return;
+        }
+        listEl.innerHTML = updates.map(function (u) {
+          var id = (u._id && u._id.toString()) || '';
+          var title = (u.title || '').replace(/</g, '&lt;').replace(/"/g, '&quot;');
+          var msg = (u.message || '').replace(/</g, '&lt;').replace(/\n/g, '<br>');
+          var dateStr = u.createdAt ? new Date(u.createdAt).toLocaleString() : '';
+          var fileHtml = '';
+          if (u.fileUrl && u.fileName) {
+            var href = (base ? base + u.fileUrl : u.fileUrl);
+            fileHtml = '<p class="academic-update-file"><a href="' + href.replace(/"/g, '&quot;') + '" target="_blank" rel="noopener">' + (u.fileName || 'file').replace(/</g, '&lt;') + '</a></p>';
+          }
+          return '<div class="academic-update-item" style="margin-bottom: 1rem; padding: 1rem; border: 1px solid #e0e0e0; border-radius: 8px; display: flex; justify-content: space-between; align-items: flex-start;">' +
+            '<div><h3 style="margin: 0 0 0.5rem 0;">' + title + '</h3>' +
+            (dateStr ? '<p class="text-muted" style="margin: 0 0 0.5rem 0; font-size: 0.875rem;">' + dateStr + '</p>' : '') +
+            (msg ? '<div style="margin-bottom: 0.5rem;">' + msg + '</div>' : '') + fileHtml + '</div>' +
+            '<button type="button" class="btn-delete-update settings-input" data-id="' + id.replace(/"/g, '&quot;') + '" style="flex-shrink: 0; margin-left: 1rem;">Delete</button></div>';
+        }).join('');
+        listEl.querySelectorAll('.btn-delete-update').forEach(function (btn) {
+          btn.addEventListener('click', function () {
+            var id = btn.getAttribute('data-id');
+            if (!id || !confirm('Delete this update?')) return;
+            btn.disabled = true;
+            ECS_API.admin.deleteAcademicUpdate(id).then(function () {
+              loadAdminAcademicUpdatesPanel();
+            }).catch(function (err) {
+              alert(err.message || 'Failed to delete');
+              btn.disabled = false;
+            });
+          });
+        });
+      })
+      .catch(function () {
+        listEl.innerHTML = '<p class="text-muted">Could not load updates.</p>';
+      });
+  }
+
   loadDashboard();
+
+  // ----- Admin: Academic update form submit -----
+  var adminAcademicUpdateForm = document.getElementById('admin-academic-update-form');
+  var adminAcademicUpdateMsg = document.getElementById('admin-academic-update-message');
+  if (adminAcademicUpdateForm && typeof ECS_API !== 'undefined') {
+    adminAcademicUpdateForm.addEventListener('submit', function (e) {
+      e.preventDefault();
+      var titleEl = document.getElementById('admin-update-title');
+      var messageEl = document.getElementById('admin-update-message');
+      var fileEl = document.getElementById('admin-update-file');
+      var title = titleEl && titleEl.value ? titleEl.value.trim() : '';
+      if (!title) {
+        if (adminAcademicUpdateMsg) { adminAcademicUpdateMsg.textContent = 'Title is required.'; adminAcademicUpdateMsg.className = 'settings-message settings-message--error'; }
+        return;
+      }
+      var formData = new FormData();
+      formData.append('title', title);
+      formData.append('message', (messageEl && messageEl.value) ? messageEl.value : '');
+      if (fileEl && fileEl.files && fileEl.files[0]) formData.append('file', fileEl.files[0]);
+      if (adminAcademicUpdateMsg) { adminAcademicUpdateMsg.textContent = 'Publishing...'; adminAcademicUpdateMsg.className = 'settings-message'; }
+      ECS_API.admin.createAcademicUpdate(formData)
+        .then(function () {
+          if (adminAcademicUpdateMsg) { adminAcademicUpdateMsg.textContent = 'Update published.'; adminAcademicUpdateMsg.className = 'settings-message settings-message--success'; }
+          if (titleEl) titleEl.value = '';
+          if (messageEl) messageEl.value = '';
+          if (fileEl) fileEl.value = '';
+          loadAdminAcademicUpdatesPanel();
+        })
+        .catch(function (err) {
+          if (adminAcademicUpdateMsg) { adminAcademicUpdateMsg.textContent = err.message || 'Failed to publish.'; adminAcademicUpdateMsg.className = 'settings-message settings-message--error'; }
+        });
+    });
+  }
 
   // ----- Student: "Join your meeting" block – always visible; show live sessions or placeholder -----
   var liveSessionBlock = document.getElementById('live-session-block');

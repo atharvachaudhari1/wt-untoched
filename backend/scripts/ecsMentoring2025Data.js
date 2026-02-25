@@ -74,7 +74,7 @@ module.exports = [
     ],
   },
   {
-    mentorName: 'Prof. Smita Deshmukh',
+    mentorName: 'Prof. Binsy Joseph',
     students: [
       { roll: '10578', name: 'KAMBLE ROHIT SURESH' },
       { roll: '10579', name: 'KAPOOR NEHA RAJESH' },
@@ -86,7 +86,7 @@ module.exports = [
     ],
   },
   {
-    mentorName: 'Dr. Ramesh Gaikwad',
+    mentorName: 'Prof. Vaibhav Godbole',
     students: [
       { roll: '10585', name: 'SHINDE KAVITA RAJENDRA' },
       { roll: '10586', name: 'THAKUR VARUN MOHAN' },
@@ -97,7 +97,7 @@ module.exports = [
     ],
   },
   {
-    mentorName: 'Prof. Meera Joshi',
+    mentorName: 'Prof. Jayen Modi',
     students: [
       { roll: '10591', name: 'DESHPANDE ARJUN SURESH' },
       { roll: '10592', name: 'GAIKWAD POOJA RAJESH' },
@@ -109,7 +109,7 @@ module.exports = [
     ],
   },
   {
-    mentorName: 'Dr. Vikram Patil',
+    mentorName: 'Prof. Prajakta Bhangale',
     students: [
       { roll: '10598', name: 'TENDULKAR ANANYA RAJ' },
       { roll: '10599', name: 'UNDE KARTIK SURESH' },

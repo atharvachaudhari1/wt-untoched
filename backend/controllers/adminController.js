@@ -1,7 +1,7 @@
 /**
  * Admin API: create users, assign mentor, view all sessions, analytics, announcements.
  */
-const { User, StudentProfile, TeacherProfile, ParentProfile, Session, Announcement, Attendance, StudentActivity } = require('../models');
+const { User, StudentProfile, TeacherProfile, ParentProfile, Session, Announcement, Attendance, StudentActivity, CourseAttendance } = require('../models');
 const bcrypt = require('bcryptjs');
 
 /**
@@ -202,7 +202,7 @@ exports.getStudentProgress = async (req, res, next) => {
       return res.status(404).json({ success: false, message: 'Student not found.' });
     }
     const limit = Number(req.query.limit) || 50;
-    const [attendance, approvedActivities] = await Promise.all([
+    const [attendance, approvedActivities, courseAttendance] = await Promise.all([
       Attendance.find({ student: studentId })
         .sort({ createdAt: -1 })
         .populate('session', 'title scheduledAt')
@@ -210,8 +210,9 @@ exports.getStudentProgress = async (req, res, next) => {
       StudentActivity.find({ student: studentId, status: 'approved' })
         .sort({ startDate: -1 })
         .limit(50),
+      CourseAttendance.find({ student: studentId }).sort({ courseCode: 1 }).lean(),
     ]);
-    res.json({ success: true, student, attendance, approvedActivities });
+    res.json({ success: true, student, attendance, approvedActivities, courseAttendance });
   } catch (err) {
     next(err);
   }

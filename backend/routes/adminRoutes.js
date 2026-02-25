@@ -9,6 +9,8 @@ const adminController = require('../controllers/adminController');
 const sessionController = require('../controllers/sessionController');
 const announcementController = require('../controllers/announcementController');
 const activityController = require('../controllers/activityController');
+const academicUpdatesController = require('../controllers/academicUpdatesController');
+const upload = require('../middleware/uploadMiddleware');
 
 router.use(authMiddleware);
 router.use(authorizeRoles('admin'));
@@ -26,5 +28,9 @@ router.post('/announcements', announcementController.createAnnouncement);
 router.get('/activities', activityController.getAllActivities);
 router.patch('/activities/:id/approve', activityController.approveActivity);
 router.patch('/activities/:id/reject', activityController.rejectActivity);
+
+router.get('/academic-updates', academicUpdatesController.list);
+router.post('/academic-updates', upload.single('file'), academicUpdatesController.create);
+router.delete('/academic-updates/:id', academicUpdatesController.delete);
 
 module.exports = router;

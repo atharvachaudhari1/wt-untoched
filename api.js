@@ -80,7 +80,7 @@
       });
     }).catch(function (err) {
       if (err.message === 'Failed to fetch' || err.name === 'TypeError') {
-        return Promise.reject(new Error('Cannot reach server. Start the backend (port 3000) and open this page from http://' + (typeof window !== 'undefined' && window.location ? window.location.hostname : 'localhost') + ':5500'));
+        return Promise.reject(new Error('Cannot reach server. Start the backend (port 3000), then refresh this page.'));
       }
       return Promise.reject(err);
     });
@@ -172,7 +172,26 @@
         return request('GET', path);
       },
       approveActivity: function (id) { return request('PATCH', '/admin/activities/' + id + '/approve'); },
-      rejectActivity: function (id, body) { return request('PATCH', '/admin/activities/' + id + '/reject', body || {}); }
+      rejectActivity: function (id, body) { return request('PATCH', '/admin/activities/' + id + '/reject', body || {}); },
+      getAcademicUpdates: function () { return request('GET', '/academic-updates'); },
+      createAcademicUpdate: function (formData) {
+        var base = getApiBase();
+        var url = base + '/admin/academic-updates';
+        var token = getToken();
+        var options = { method: 'POST', headers: { Authorization: token ? 'Bearer ' + token : '' } };
+        options.body = formData;
+        return fetch(url, options).then(function (res) { return res.text().then(function (text) {
+          var data = {};
+          try { data = text ? JSON.parse(text) : {}; } catch (_) {}
+          if (res.status === 401) { clearAuth(); if (typeof window !== 'undefined' && window.location.pathname.indexOf('login') === -1) window.location.href = 'login.html'; return Promise.reject(new Error('Session expired')); }
+          if (!res.ok) return Promise.reject(new Error(data.message || 'Request failed (' + res.status + ')'));
+          return data;
+        }); });
+      },
+      deleteAcademicUpdate: function (id) { return request('DELETE', '/admin/academic-updates/' + id); }
+    },
+    academicUpdates: {
+      list: function () { return request('GET', '/academic-updates'); }
     },
     chat: {
       contacts: function () { return request('GET', '/chat/contacts'); },

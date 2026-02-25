@@ -10,9 +10,15 @@
     "seed-mentoring": "node scripts/seedMentoringData.js",
     "seed-ecs2025": "node scripts/seedECSMentoring2025.js",
     "seed-mnm": "node scripts/seedMNM.js",
+    "seed-mnm-data": "node scripts/seedMNMData.js",
     "reset-db": "node scripts/resetAndSeedFromExcel.js"
   },
-  "keywords": ["mentoring", "college", "express", "mongodb"],
+  "keywords": [
+    "mentoring",
+    "college",
+    "express",
+    "mongodb"
+  ],
   "author": "",
   "license": "ISC",
   "dependencies": {
@@ -22,6 +28,7 @@
     "express": "^4.18.2",
     "jsonwebtoken": "^9.0.2",
     "mongoose": "^8.0.3",
+    "multer": "^2.0.2",
     "xlsx": "^0.18.5"
   }
 }
