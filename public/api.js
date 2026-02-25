@@ -121,6 +121,7 @@
         return request('GET', path);
       },
       createActivity: function (body) { return request('POST', '/student/activities', body); },
+      deleteAllActivities: function () { return request('DELETE', '/student/activities'); },
       announcements: function () { return request('GET', '/student/announcements'); },
       notifications: function () { return request('GET', '/notifications'); }
     },
@@ -166,6 +167,7 @@
         var params = new URLSearchParams();
         if (q.status) params.set('status', q.status);
         if (q.studentId) params.set('studentId', q.studentId);
+        if (q.rollNo) params.set('rollNo', q.rollNo);
         if (q.limit) params.set('limit', q.limit);
         var path = '/admin/activities';
         if (params.toString()) path += '?' + params.toString();
@@ -173,6 +175,13 @@
       },
       approveActivity: function (id) { return request('PATCH', '/admin/activities/' + id + '/approve'); },
       rejectActivity: function (id, body) { return request('PATCH', '/admin/activities/' + id + '/reject', body || {}); },
+      deleteAllActivities: function (studentId) {
+        var path = '/admin/activities';
+        if (studentId) path += '?studentId=' + encodeURIComponent(studentId);
+        return request('DELETE', path);
+      },
+      deleteActivity: function (id) { return request('DELETE', '/admin/activities/' + id); },
+      deleteSelectedActivities: function (ids) { return request('POST', '/admin/activities/delete-selected', { ids: ids }); },
       getAcademicUpdates: function () { return request('GET', '/academic-updates'); },
       createAcademicUpdate: function (formData) {
         var base = getApiBase();

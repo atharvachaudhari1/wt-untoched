@@ -28,6 +28,9 @@ router.post('/announcements', announcementController.createAnnouncement);
 router.get('/activities', activityController.getAllActivities);
 router.patch('/activities/:id/approve', activityController.approveActivity);
 router.patch('/activities/:id/reject', activityController.rejectActivity);
+router.delete('/activities', activityController.deleteAllActivities);
+router.delete('/activities/:id', activityController.deleteOneActivity);
+router.post('/activities/delete-selected', activityController.deleteSelectedActivities);
 
 router.get('/academic-updates', academicUpdatesController.list);
 router.post('/academic-updates', upload.single('file'), academicUpdatesController.create);

@@ -670,6 +670,20 @@
         });
       };
     }
+    var progressActivitiesDeleteAll = document.getElementById('progress-activities-delete-all');
+    if (progressActivitiesDeleteAll && typeof ECS_API !== 'undefined' && user && user.role === 'student') {
+      progressActivitiesDeleteAll.onclick = function () {
+        if (!confirm('Delete all your activity requests?')) return;
+        ECS_API.student.deleteAllActivities().then(function (data) {
+          var n = (data && data.deleted) ? data.deleted : 0;
+          loadProgressActivitiesList();
+          ECS_API.student.attendance().then(function (d) {
+            loadProgressAttendanceTable(d.attendance || [], d.approvedActivities || []);
+          }).catch(function () {});
+          if (typeof alert === 'function') alert('Deleted ' + n + ' request(s).');
+        }).catch(function (err) { if (typeof alert === 'function') alert(err.message || 'Failed to delete.'); });
+      };
+    }
   }
 
   function loadProgressCourseAttendance() {
@@ -1171,32 +1185,44 @@
   function loadAdminActivitiesPanel() {
     if (typeof ECS_API === 'undefined' || !user || user.role !== 'admin') return;
     var tbody = document.getElementById('admin-activities-tbody');
+    var searchInput = document.getElementById('admin-activities-rollno-search');
+    var rollNo = (searchInput && searchInput.value && searchInput.value.trim()) ? searchInput.value.trim() : '';
     if (!tbody) return;
-    tbody.innerHTML = '<tr><td colspan="6" class="text-muted">Loading...</td></tr>';
-    ECS_API.admin.activities({ status: 'pending', limit: 100 }).then(function (data) {
+    tbody.innerHTML = '<tr><td colspan="7" class="text-muted">Loading...</td></tr>';
+    var query = { limit: 200 };
+    if (rollNo) query.rollNo = rollNo;
+    ECS_API.admin.activities(query).then(function (data) {
       var list = data.activities || [];
       if (!list.length) {
-        tbody.innerHTML = '<tr><td colspan="6" class="text-muted">No pending activity requests.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="7" class="text-muted">No activity requests.' + (rollNo ? ' Try a different roll number.' : '') + '</td></tr>';
+        updateAdminActivitiesSelectAll();
         return;
       }
       tbody.innerHTML = list.map(function (a) {
         var id = (a._id && a._id.toString()) || '';
-        var studentName = (a.student && a.student.user && a.student.user.name) ? a.student.user.name.replace(/</g, '&lt;') : (a.student && a.student.rollNo) || '—';
+        var studentName = (a.student && a.student.user && a.student.user.name) ? a.student.user.name.replace(/</g, '&lt;') : '—';
+        var roll = (a.student && a.student.rollNo) ? a.student.rollNo.replace(/</g, '&lt;') : '—';
         var type = (a.type || '').replace(/</g, '&lt;');
         var title = (a.title || '').replace(/</g, '&lt;');
         var start = a.startDate ? new Date(a.startDate).toLocaleDateString() : '—';
         var end = a.endDate ? new Date(a.endDate).toLocaleDateString() : '';
         var dateStr = end && end !== start ? start + ' – ' + end : start;
-        return '<tr><td>' + studentName + '</td><td>' + type + '</td><td>' + title + '</td><td>' + dateStr + '</td><td>pending</td><td><button type="button" class="btn-activity-approve" data-id="' + id.replace(/"/g, '&quot;') + '">Approve</button> <button type="button" class="btn-activity-reject" data-id="' + id.replace(/"/g, '&quot;') + '">Reject</button></td></tr>';
+        var status = (a.status || 'pending').toLowerCase();
+        var statusClass = status === 'approved' ? 'activity-status--approved' : (status === 'rejected' ? 'activity-status--rejected' : 'activity-status--pending');
+        var actions = '';
+        if (status === 'pending') {
+          actions += '<button type="button" class="btn-activity-approve" data-id="' + id.replace(/"/g, '&quot;') + '">Approve</button> ';
+          actions += '<button type="button" class="btn-activity-reject" data-id="' + id.replace(/"/g, '&quot;') + '">Reject</button> ';
+        }
+        actions += '<button type="button" class="btn-activity-delete-one" data-id="' + id.replace(/"/g, '&quot;') + '" style="margin-left: 4px;">Delete</button>';
+        return '<tr><td><input type="checkbox" class="admin-activity-row-cb" data-id="' + id.replace(/"/g, '&quot;') + '"></td><td>' + studentName + ' (' + roll + ')</td><td>' + type + '</td><td>' + title + '</td><td>' + dateStr + '</td><td><span class="' + statusClass + '">' + status + '</span></td><td>' + actions + '</td></tr>';
       }).join('');
       tbody.querySelectorAll('.btn-activity-approve').forEach(function (btn) {
         btn.addEventListener('click', function () {
           var id = btn.getAttribute('data-id');
           if (!id) return;
           btn.disabled = true;
-          ECS_API.admin.approveActivity(id).then(function () {
-            loadAdminActivitiesPanel();
-          }).catch(function (err) {
+          ECS_API.admin.approveActivity(id).then(function () { loadAdminActivitiesPanel(); }).catch(function (err) {
             alert(err.message || 'Failed to approve');
             btn.disabled = false;
           });
@@ -1208,17 +1234,80 @@
           if (!id) return;
           var reason = window.prompt('Rejection reason (optional):');
           btn.disabled = true;
-          ECS_API.admin.rejectActivity(id, reason ? { reason: reason } : {}).then(function () {
-            loadAdminActivitiesPanel();
-          }).catch(function (err) {
+          ECS_API.admin.rejectActivity(id, reason ? { reason: reason } : {}).then(function () { loadAdminActivitiesPanel(); }).catch(function (err) {
             alert(err.message || 'Failed to reject');
             btn.disabled = false;
           });
         });
       });
+      tbody.querySelectorAll('.btn-activity-delete-one').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          var id = btn.getAttribute('data-id');
+          if (!id || !confirm('Delete this activity request?')) return;
+          btn.disabled = true;
+          ECS_API.admin.deleteActivity(id).then(function () { loadAdminActivitiesPanel(); }).catch(function (err) {
+            alert(err.message || 'Failed to delete');
+            btn.disabled = false;
+          });
+        });
+      });
+      tbody.querySelectorAll('.admin-activity-row-cb').forEach(function (cb) {
+        cb.addEventListener('change', function () { updateAdminActivitiesSelectAll(); });
+      });
+      updateAdminActivitiesSelectAll();
     }).catch(function () {
-      tbody.innerHTML = '<tr><td colspan="6" class="text-muted">Could not load.</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="7" class="text-muted">Could not load.</td></tr>';
     });
+    function updateAdminActivitiesSelectAll() {
+      var selectAll = document.getElementById('admin-activities-select-all');
+      if (!selectAll) return;
+      var cbs = tbody ? tbody.querySelectorAll('.admin-activity-row-cb') : [];
+      var checked = tbody ? tbody.querySelectorAll('.admin-activity-row-cb:checked') : [];
+      selectAll.checked = cbs.length > 0 && checked.length === cbs.length;
+      selectAll.indeterminate = checked.length > 0 && checked.length < cbs.length;
+    }
+    var selectAllEl = document.getElementById('admin-activities-select-all');
+    if (selectAllEl) {
+      selectAllEl.onclick = function () {
+        var cbs = tbody ? tbody.querySelectorAll('.admin-activity-row-cb') : [];
+        cbs.forEach(function (cb) { cb.checked = selectAllEl.checked; });
+      };
+    }
+    var searchBtn = document.getElementById('admin-activities-search-btn');
+    if (searchBtn) searchBtn.onclick = function () { loadAdminActivitiesPanel(); };
+    var clearSearchBtn = document.getElementById('admin-activities-clear-search');
+    if (clearSearchBtn) {
+      clearSearchBtn.onclick = function () {
+        if (searchInput) searchInput.value = '';
+        loadAdminActivitiesPanel();
+      };
+    }
+    var deleteSelectedBtn = document.getElementById('admin-activities-delete-selected');
+    if (deleteSelectedBtn && typeof ECS_API !== 'undefined') {
+      deleteSelectedBtn.onclick = function () {
+        var cbs = tbody ? tbody.querySelectorAll('.admin-activity-row-cb:checked') : [];
+        var ids = [];
+        cbs.forEach(function (cb) { var id = cb.getAttribute('data-id'); if (id) ids.push(id); });
+        if (!ids.length) { alert('Select one or more rows to delete.'); return; }
+        if (!confirm('Delete ' + ids.length + ' selected request(s)?')) return;
+        ECS_API.admin.deleteSelectedActivities(ids).then(function (data) {
+          var n = (data && data.deleted) ? data.deleted : 0;
+          loadAdminActivitiesPanel();
+          if (typeof alert === 'function') alert('Deleted ' + n + ' request(s).');
+        }).catch(function (err) { if (typeof alert === 'function') alert(err.message || 'Failed to delete.'); });
+      };
+    }
+    var adminDeleteAllBtn = document.getElementById('admin-activities-delete-all');
+    if (adminDeleteAllBtn && typeof ECS_API !== 'undefined') {
+      adminDeleteAllBtn.onclick = function () {
+        if (!confirm('Delete ALL activity requests (every student)?')) return;
+        ECS_API.admin.deleteAllActivities().then(function (data) {
+          var n = (data && data.deleted) ? data.deleted : 0;
+          loadAdminActivitiesPanel();
+          if (typeof alert === 'function') alert('Deleted ' + n + ' request(s).');
+        }).catch(function (err) { if (typeof alert === 'function') alert(err.message || 'Failed to delete.'); });
+      };
+    }
   }
 
   function loadAdminAcademicUpdatesPanel() {

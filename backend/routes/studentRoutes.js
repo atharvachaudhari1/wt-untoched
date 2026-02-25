@@ -23,5 +23,6 @@ router.get('/notes', studentController.getMentoringNotes);
 router.get('/announcements', announcementController.getAnnouncements);
 router.get('/activities', activityController.getMyActivities);
 router.post('/activities', activityController.createActivity);
+router.delete('/activities', activityController.deleteAllMyActivities);
 
 module.exports = router;

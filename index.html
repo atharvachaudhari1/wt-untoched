@@ -366,6 +366,7 @@
                     </tbody>
                   </table>
                 </div>
+                <button type="button" class="btn-continue" id="progress-activities-delete-all" style="margin-top: 0.5rem; background: #c62828;">Delete all</button>
               </section>
             </div>
           </div>
@@ -467,16 +468,31 @@
         <!-- Panel: Admin – Activity requests (approve/reject hackathon, workshop, etc.) -->
         <div class="content-panel" id="panel-admin-activities" data-page="admin-activities">
           <h1 class="page-title">Activity requests</h1>
-          <p class="text-muted" style="margin-bottom: 1rem;">Students submit requests for hackathons, workshops, etc. on college days. Approve so the date appears in their attendance as approved activity.</p>
+          <p class="text-muted" style="margin-bottom: 1rem;">Students submit requests for hackathons, workshops, etc. on college days. Approve so the date appears in their attendance. Approved and rejected items stay as records; use Delete to remove.</p>
+          <div style="margin-bottom: 1rem;">
+            <label for="admin-activities-rollno-search" class="settings-label">Search by roll number</label>
+            <div style="display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap;">
+              <input type="text" id="admin-activities-rollno-search" class="settings-input" placeholder="e.g. 10523 or partial roll no" style="max-width: 14rem;">
+              <button type="button" class="btn-continue" id="admin-activities-search-btn">Search</button>
+              <button type="button" class="btn-continue" id="admin-activities-clear-search" style="background: #666;">Clear</button>
+            </div>
+          </div>
           <div class="table-wrap">
             <table class="sessions-table" id="admin-activities-table">
               <thead>
-                <tr><th>Student</th><th>Type</th><th>Title</th><th>Date</th><th>Status</th><th>Actions</th></tr>
+                <tr>
+                  <th style="width: 2.5rem;"><input type="checkbox" id="admin-activities-select-all" title="Select all"></th>
+                  <th>Student (Roll no)</th><th>Type</th><th>Title</th><th>Date</th><th>Status</th><th>Actions</th>
+                </tr>
               </thead>
               <tbody id="admin-activities-tbody">
-                <tr><td colspan="6" class="text-muted">Loading...</td></tr>
+                <tr><td colspan="7" class="text-muted">Loading...</td></tr>
               </tbody>
             </table>
+          </div>
+          <div style="margin-top: 0.5rem; display: flex; gap: 0.5rem; flex-wrap: wrap;">
+            <button type="button" class="btn-continue" id="admin-activities-delete-selected" style="background: #c62828;">Delete selected</button>
+            <button type="button" class="btn-continue" id="admin-activities-delete-all" style="background: #c62828;">Delete all activity requests</button>
           </div>
         </div>
 
