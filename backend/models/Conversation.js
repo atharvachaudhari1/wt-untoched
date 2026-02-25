@@ -18,8 +18,8 @@ const conversationSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-// One conversation per pair; participants stored sorted for consistent lookup
-conversationSchema.index({ participants: 1 }, { unique: true });
+// One conversation per pair; find-or-create in controller uses sorted participants.
+// Do NOT use unique on participants array (multikey unique would allow only one conv per user).
 conversationSchema.index({ lastMessageAt: -1 });
 
 module.exports = mongoose.model('Conversation', conversationSchema);

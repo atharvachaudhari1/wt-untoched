@@ -27,6 +27,13 @@ app.use(errorHandler);
 
 async function start() {
   await connectDB();
+  // Drop old unique index on conversations.participants (it caused E11000 - one user could not be in multiple chats)
+  try {
+    await require('./models/Conversation').collection.dropIndex('participants_1');
+    console.log('Dropped old conversations index participants_1');
+  } catch (e) {
+    if (e.code !== 27 && e.codeName !== 'IndexNotFound') console.warn('Conversations index drop:', e.message);
+  }
   await runSeed().catch((err) => console.error('Seed error:', err.message));
   app.listen(config.PORT, () => {
     console.log(`ECS Mentoring Portal API running on port ${config.PORT}`);

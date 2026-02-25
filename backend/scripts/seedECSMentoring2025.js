@@ -42,12 +42,10 @@ async function findOrCreateMentor(mentorName) {
   const email = mentorEmail(mentorName);
   let user = await User.findOne({ email: email.toLowerCase() }).select('+password');
   if (user) {
-    if (user.role !== 'teacher') {
-      user.role = 'teacher';
-      user.name = mentorName;
-      user.password = MENTOR_DEFAULT_PASSWORD;
-      await user.save();
-    }
+    user.role = 'teacher';
+    user.name = mentorName;
+    user.password = MENTOR_DEFAULT_PASSWORD;
+    await user.save();
   } else {
     user = await User.create({
       email: email.toLowerCase(),
