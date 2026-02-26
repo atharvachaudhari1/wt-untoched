@@ -176,7 +176,7 @@ exports.getAllStudents = async (req, res, next) => {
  */
 exports.getAllTeachers = async (req, res, next) => {
   try {
-    const { department, limit = 100 } = req.query;
+    const { department, limit = 200 } = req.query;
     const query = {};
     if (department) query.department = department;
     const teachers = await TeacherProfile.find(query)

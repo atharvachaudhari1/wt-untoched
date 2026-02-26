@@ -12,7 +12,8 @@
     "seed-mnm": "node scripts/seedMNM.js",
     "seed-mnm-data": "node scripts/seedMNMData.js",
     "reset-db": "node scripts/resetAndSeedFromExcel.js",
-    "clear-activities": "node scripts/clearActivityRequests.js"
+    "clear-activities": "node scripts/clearActivityRequests.js",
+    "ensure-godbole": "node scripts/ensureGodboleMentor.js"
   },
   "keywords": [
     "mentoring",
