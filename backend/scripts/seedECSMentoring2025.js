@@ -38,17 +38,19 @@ function studentPassword(roll) {
   return String(roll).trim();
 }
 
-async function findOrCreateMentor(mentorName) {
-  const email = mentorEmail(mentorName);
-  let user = await User.findOne({ email: email.toLowerCase() }).select('+password');
+async function findOrCreateMentor(mentorName, customEmail) {
+  const email = (customEmail && String(customEmail).trim()) ? String(customEmail).trim().toLowerCase() : mentorEmail(mentorName);
+  let user = await User.findOne({ email: email }).select('+password');
   if (user) {
-    user.role = 'teacher';
-    user.name = mentorName;
-    user.password = MENTOR_DEFAULT_PASSWORD;
-    await user.save();
+    if (user.role !== 'teacher') {
+      user.role = 'teacher';
+      user.name = mentorName;
+      user.password = MENTOR_DEFAULT_PASSWORD;
+      await user.save();
+    }
   } else {
     user = await User.create({
-      email: email.toLowerCase(),
+      email: email,
       password: MENTOR_DEFAULT_PASSWORD,
       name: mentorName,
       role: 'teacher',
@@ -128,7 +130,7 @@ async function run() {
   let studentsProcessed = 0;
 
   for (const group of mentoringData) {
-    const teacherProfile = await findOrCreateMentor(group.mentorName);
+    const teacherProfile = await findOrCreateMentor(group.mentorName, group.mentorEmail);
     const assignedIds = [];
 
     for (const s of group.students || []) {
@@ -165,7 +167,7 @@ async function run() {
   console.log('Mentors:', mentorsProcessed);
   console.log('Students assigned:', studentsProcessed);
   console.log('\nStudent login: <rollno>@' + STUDENT_EMAIL_DOMAIN + ', password = roll number');
-  console.log('Mentor login: <slug>@' + STUDENT_EMAIL_DOMAIN + ' (e.g. dr-d-v-bhoir@' + STUDENT_EMAIL_DOMAIN + '), password:', MENTOR_DEFAULT_PASSWORD);
+  console.log('Mentor login: email from data (or <slug>@' + STUDENT_EMAIL_DOMAIN + '), password:', MENTOR_DEFAULT_PASSWORD);
   process.exit(0);
 }
 

@@ -3,6 +3,7 @@
  *
  * Copy the mentor names and assigned students from the PDF into the array below.
  * Format: one object per mentor with mentorName and students (array of { roll, name }).
+ * Optional: mentorEmail – use a specific login email (e.g. godbole@fragnel.edu); if omitted, email is derived from mentorName.
  *
  * Example from PDF:
  *   Mentor: Dr. XYZ  →  Students: Roll 10514 Name1, Roll 10515 Name2, ...
@@ -130,5 +131,10 @@ module.exports = [
       { roll: '10609', name: 'INGLE SHRADDHA RAHUL' },
       { roll: '10610', name: 'KALE ROHAN DEEPAK' },
     ],
+  },
+  {
+    mentorName: 'Prof. Vaibhav Godbole',
+    mentorEmail: 'godbole@fragnel.edu',
+    students: [],
   },
 ];
