@@ -51,6 +51,16 @@
           </svg>
           <span class="nav-label">Progress</span>
         </a>
+        <a href="#" class="nav-item nav-item--notepad" id="nav-notepad" data-page="notepad" aria-label="Notepad" style="display: none;">
+          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+            <polyline points="14 2 14 8 20 8"/>
+            <line x1="16" y1="13" x2="8" y2="13"/>
+            <line x1="16" y1="17" x2="8" y2="17"/>
+            <line x1="10" y1="9" x2="8" y2="9"/>
+          </svg>
+          <span class="nav-label">Notepad</span>
+        </a>
         <a href="#" class="nav-item" data-page="chat" aria-label="Chat">
           <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
@@ -277,6 +287,35 @@
           </div>
         </div>
 
+        <!-- Panel: Notepad (follow-up notes – teacher & counselor only; not chat) -->
+        <div class="content-panel" id="panel-notepad" data-page="notepad">
+          <h1 class="page-title">Notepad</h1>
+          <p class="text-muted" style="margin-bottom: 1rem;">Follow-up notes for mentoring sessions. This is not chat — use it to add notes for future follow-up. Notes are visible to the assigned student. Only you (teacher or counselor) can edit.</p>
+          <!-- Teacher view -->
+          <div id="notepad-teacher-view" style="display: none;">
+            <h2 class="panel-title">Your sessions – add follow-up notes</h2>
+            <p class="text-muted" style="margin-bottom: 0.75rem;">Select a session and add or edit notes. Only sessions where all students are your assigned mentees can be saved. Counselor can also edit these in their view.</p>
+            <div id="notepad-teacher-list"></div>
+          </div>
+          <!-- Counselor view -->
+          <div id="notepad-counselor-view" style="display: none;">
+            <h2 class="panel-title">Follow-up notes by student</h2>
+            <p class="text-muted" style="margin-bottom: 0.75rem;">Select a student to add or edit follow-up notes for their sessions.</p>
+            <div class="admin-progress-select-wrap" style="margin-bottom: 1rem;">
+              <label for="notepad-counselor-student-select" class="settings-label">Student</label>
+              <select id="notepad-counselor-student-select" class="settings-select">
+                <option value="">— Select student —</option>
+              </select>
+              <button type="button" class="btn-continue btn-continue--lime" id="notepad-counselor-load-btn" style="margin-left: 0.5rem;">Load notes</button>
+            </div>
+            <div id="notepad-counselor-list"></div>
+          </div>
+          <!-- Not visible for this role -->
+          <div id="notepad-no-access" style="display: none;">
+            <p class="text-muted">Only teachers and counselors can use the notepad. Students can view notes in Progress → Follow-up notes from mentor.</p>
+          </div>
+        </div>
+
         <!-- Panel: Progress -->
         <div class="content-panel" id="panel-progress" data-page="progress">
           <h1 class="page-title" id="progress-page-title">My progress</h1>
@@ -340,6 +379,20 @@
                   </tbody>
                 </table>
               </div>
+
+              <!-- Admin/Counselor: Follow-up (mentoring notes) when viewing a student -->
+              <section class="progress-viewer-followup-section" id="progress-viewer-followup-section" style="display: none;">
+                <h3 class="panel-title" style="margin-top: 1.5rem;">Follow-up (mentoring notes)</h3>
+                <p class="text-muted" style="margin-bottom: 0.5rem;">Notes from mentors after sessions with this student.</p>
+                <div id="progress-viewer-followup-list"></div>
+              </section>
+
+              <!-- Student: Follow-up notes from mentor (read-only) -->
+              <section class="progress-followup-notes-section" id="progress-followup-notes-section" style="display: none;">
+                <h3 class="panel-title" style="margin-top: 1.5rem;">Follow-up notes from mentor</h3>
+                <p class="text-muted" style="margin-bottom: 0.5rem;">Notes from your mentor after sessions. Only your mentor can edit these.</p>
+                <div id="progress-followup-notes-list"></div>
+              </section>
 
               <!-- Student: Request activity (hackathon/workshop) - approved by admin for attendance -->
               <section class="progress-activity-section" id="progress-activity-section" style="display: none;">

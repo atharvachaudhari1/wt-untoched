@@ -192,7 +192,7 @@ exports.getAllTeachers = async (req, res, next) => {
 };
 
 /**
- * Admin: get a student's progress (attendance + approved activities). :studentId = StudentProfile id.
+ * Admin: get a student's progress (attendance + approved activities + follow-up notes). :studentId = StudentProfile id.
  */
 exports.getStudentProgress = async (req, res, next) => {
   try {
@@ -202,7 +202,7 @@ exports.getStudentProgress = async (req, res, next) => {
       return res.status(404).json({ success: false, message: 'Student not found.' });
     }
     const limit = Number(req.query.limit) || 50;
-    const [attendance, approvedActivities, courseAttendance] = await Promise.all([
+    const [attendance, approvedActivities, courseAttendance, followUpSessions] = await Promise.all([
       Attendance.find({ student: studentId })
         .sort({ createdAt: -1 })
         .populate('session', 'title scheduledAt')
@@ -211,8 +211,20 @@ exports.getStudentProgress = async (req, res, next) => {
         .sort({ startDate: -1 })
         .limit(50),
       CourseAttendance.find({ student: studentId }).sort({ courseCode: 1 }).lean(),
+      Session.find({ students: studentId, mentoringNotes: { $exists: true, $ne: null, $ne: '' } })
+        .sort({ scheduledAt: -1 })
+        .limit(50)
+        .populate({ path: 'teacher', select: 'user', populate: { path: 'user', select: 'name' } })
+        .select('title scheduledAt mentoringNotes'),
     ]);
-    res.json({ success: true, student, attendance, approvedActivities, courseAttendance });
+    const followUp = followUpSessions.map((s) => ({
+      sessionId: s._id,
+      title: s.title,
+      scheduledAt: s.scheduledAt,
+      mentoringNotes: s.mentoringNotes,
+      mentorName: (s.teacher && s.teacher.user && s.teacher.user.name) ? s.teacher.user.name : null,
+    }));
+    res.json({ success: true, student, attendance, approvedActivities, courseAttendance, followUp });
   } catch (err) {
     next(err);
   }

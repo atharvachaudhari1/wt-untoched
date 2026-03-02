@@ -111,6 +111,7 @@
       mentor: function () { return request('GET', '/student/mentor'); },
       attendance: function () { return request('GET', '/student/attendance'); },
       courseAttendance: function () { return request('GET', '/student/course-attendance'); },
+      notes: function () { return request('GET', '/student/notes'); },
       activities: function (query) {
         var q = query || {};
         var params = new URLSearchParams();
@@ -126,7 +127,16 @@
       notifications: function () { return request('GET', '/notifications'); }
     },
     teacher: {
-      sessions: function () { return request('GET', '/teacher/sessions'); },
+      sessions: function (query) {
+        var q = query || {};
+        var params = new URLSearchParams();
+        if (q.forNotes) params.set('forNotes', q.forNotes);
+        if (q.upcoming) params.set('upcoming', q.upcoming);
+        if (q.limit) params.set('limit', q.limit);
+        var path = '/teacher/sessions';
+        if (params.toString()) path += '?' + params.toString();
+        return request('GET', path);
+      },
       createSession: function (body) { return request('POST', '/teacher/sessions', body); },
       updateMeetLink: function (sessionId, body) { return request('PUT', '/teacher/session/' + sessionId + '/meet-link', body); },
       updateSession: function (sessionId, body) { return request('PUT', '/teacher/sessions/' + sessionId, body); }
@@ -210,7 +220,8 @@
         if (params.toString()) path += '?' + params.toString();
         return request('GET', path);
       },
-      getStudentDetail: function (studentId) { return request('GET', '/counselor/students/' + encodeURIComponent(studentId)); }
+      getStudentDetail: function (studentId) { return request('GET', '/counselor/students/' + encodeURIComponent(studentId)); },
+      updateSessionNotes: function (sessionId, body) { return request('PATCH', '/counselor/sessions/' + encodeURIComponent(sessionId) + '/notes', body); }
     },
     academicUpdates: {
       list: function () { return request('GET', '/academic-updates'); }

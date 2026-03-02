@@ -45,13 +45,14 @@ exports.getStudentDetail = async (req, res, next) => {
         .sort({ startDate: -1 })
         .limit(50),
       CourseAttendance.find({ student: studentId }).sort({ courseCode: 1 }).lean(),
-      Session.find({ students: studentId, mentoringNotes: { $exists: true, $ne: null, $ne: '' } })
+      Session.find({ students: studentId })
         .sort({ scheduledAt: -1 })
         .limit(50)
         .populate({ path: 'teacher', select: 'user', populate: { path: 'user', select: 'name' } })
         .select('title scheduledAt mentoringNotes'),
     ]);
     const followUp = followUpSessions.map((s) => ({
+      sessionId: s._id,
       title: s.title,
       scheduledAt: s.scheduledAt,
       mentoringNotes: s.mentoringNotes,
@@ -64,6 +65,34 @@ exports.getStudentDetail = async (req, res, next) => {
       approvedActivities,
       courseAttendance,
       followUp,
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+/**
+ * PATCH /counselor/sessions/:sessionId/notes - Counselor can edit follow-up notes for a session.
+ * Teacher edits via PUT /teacher/sessions/:id. Only teacher and counselor can edit; students only view.
+ */
+exports.updateSessionNotes = async (req, res, next) => {
+  try {
+    const { sessionId } = req.params;
+    const { mentoringNotes } = req.body || {};
+    const session = await Session.findById(sessionId);
+    if (!session) {
+      return res.status(404).json({ success: false, message: 'Session not found.' });
+    }
+    session.mentoringNotes = typeof mentoringNotes === 'string' ? mentoringNotes.trim() || null : (mentoringNotes ?? null);
+    await session.save();
+    res.json({
+      success: true,
+      session: {
+        _id: session._id,
+        title: session.title,
+        scheduledAt: session.scheduledAt,
+        mentoringNotes: session.mentoringNotes,
+      },
     });
   } catch (err) {
     next(err);

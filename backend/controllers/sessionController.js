@@ -58,6 +58,7 @@ exports.createSession = async (req, res, next) => {
 
 /**
  * Update session (teacher): edit fields, upload Meet link, set live status.
+ * mentoringNotes can only be set for sessions where all students are assigned to this teacher (their mentees).
  */
 exports.updateSession = async (req, res, next) => {
   try {
@@ -65,9 +66,25 @@ exports.updateSession = async (req, res, next) => {
     if (!teacherProfile) {
       return res.status(403).json({ success: false, message: 'Teacher profile not found.' });
     }
-    const session = await Session.findOne({ _id: req.params.id, teacher: teacherProfile._id });
+    const session = await Session.findOne({ _id: req.params.id, teacher: teacherProfile._id })
+      .populate('students', '_id');
     if (!session) {
       return res.status(404).json({ success: false, message: 'Session not found.' });
+    }
+    if (req.body.mentoringNotes !== undefined) {
+      const studentIds = (session.students || []).map((s) => s._id);
+      if (studentIds.length > 0) {
+        const assignedCount = await StudentProfile.countDocuments({
+          _id: { $in: studentIds },
+          mentor: teacherProfile._id,
+        });
+        if (assignedCount !== studentIds.length) {
+          return res.status(403).json({
+            success: false,
+            message: 'You can only add follow-up notes for sessions where all students are your assigned mentees.',
+          });
+        }
+      }
     }
     const allowed = ['title', 'description', 'students', 'scheduledAt', 'duration', 'meetLink', 'isLive', 'liveSessionStatus', 'status', 'mentoringNotes'];
     allowed.forEach((key) => {
@@ -181,10 +198,11 @@ exports.getSessionById = async (req, res, next) => {
 
 /**
  * List sessions - for student: upcoming sessions where they are in students; for teacher: own; admin: all.
+ * Teacher: ?forNotes=true returns only sessions where all students are assigned to this teacher (for follow-up notes).
  */
 exports.listSessions = async (req, res, next) => {
   try {
-    const { upcoming, status, limit = 50 } = req.query;
+    const { upcoming, status, forNotes, limit = 50 } = req.query;
     let query = {};
 
     if (req.user.role === 'student') {
@@ -202,11 +220,31 @@ exports.listSessions = async (req, res, next) => {
       query.status = 'scheduled';
     }
 
-    const sessions = await Session.find(query)
-      .sort({ scheduledAt: 1 })
+    let sessions = await Session.find(query)
+      .sort({ scheduledAt: -1 })
       .limit(Number(limit))
       .populate('teacher', 'user department designation')
       .populate('students', 'user rollNo department');
+
+    if (req.user.role === 'teacher' && forNotes === 'true' && sessions.length > 0) {
+      const teacherProfile = await TeacherProfile.findOne({ user: req.user.id });
+      if (teacherProfile) {
+        const studentIds = [...new Set(sessions.flatMap((s) => (s.students || []).map((st) => st._id)))];
+        const assigned = await StudentProfile.find({
+          _id: { $in: studentIds },
+          mentor: teacherProfile._id,
+        })
+          .select('_id')
+          .lean();
+        const assignedSet = new Set(assigned.map((a) => a._id.toString()));
+        sessions = sessions.filter((s) => {
+          const students = s.students || [];
+          if (students.length === 0) return false;
+          return students.every((st) => assignedSet.has(st._id.toString()));
+        });
+      }
+    }
+
     res.json({ success: true, sessions });
   } catch (err) {
     next(err);
