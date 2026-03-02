@@ -7,6 +7,7 @@ const { User, StudentProfile, TeacherProfile, ParentProfile, Session, CourseAtte
 
 const DEFAULTS = {
   admin: { email: 'admin@ecs.edu', password: 'admin123', name: 'Admin User', role: 'admin' },
+  counselor: { email: 'counselor@ecs.edu', password: 'counselor123', name: 'Concilar', role: 'counselor' },
   teachers: [],
   student: null,
   parent: null,
@@ -71,6 +72,7 @@ async function runSeed() {
   }
 
   await ensureUser(DEFAULTS.admin.email, DEFAULTS.admin);
+  if (DEFAULTS.counselor) await ensureUser(DEFAULTS.counselor.email, DEFAULTS.counselor);
 
   if (DEFAULTS.parent && studentProfile) {
     const parentUser = await User.findOne({ email: DEFAULTS.parent.email });
@@ -116,7 +118,7 @@ async function runSeed() {
     }
   }
 
-  console.log('--- Login: admin@ecs.edu / admin123 (Admin). Add mentors/students via seed-ecs2025 or admin UI. ---');
+  console.log('--- Login: admin@ecs.edu / admin123 (Admin). Concilar: counselor@ecs.edu / counselor123. Add mentors/students via seed-ecs2025 or admin UI. ---');
 }
 
 if (require.main === module) {

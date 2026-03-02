@@ -1,5 +1,5 @@
 /**
- * ECS Mentoring Portal - API client (vanilla JS).
+ *
  */
 (function (global) {
   function getApiBase() {
@@ -198,6 +198,19 @@
         }); });
       },
       deleteAcademicUpdate: function (id) { return request('DELETE', '/admin/academic-updates/' + id); }
+    },
+    counselor: {
+      getStudents: function (query) {
+        var q = query || {};
+        var params = new URLSearchParams();
+        if (q.department) params.set('department', q.department);
+        if (q.year) params.set('year', q.year);
+        if (q.limit) params.set('limit', q.limit);
+        var path = '/counselor/students';
+        if (params.toString()) path += '?' + params.toString();
+        return request('GET', path);
+      },
+      getStudentDetail: function (studentId) { return request('GET', '/counselor/students/' + encodeURIComponent(studentId)); }
     },
     academicUpdates: {
       list: function () { return request('GET', '/academic-updates'); }

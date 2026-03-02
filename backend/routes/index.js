@@ -9,6 +9,7 @@ router.use('/student', require('./studentRoutes'));
 router.use('/teacher', require('./teacherRoutes'));
 router.use('/parent', require('./parentRoutes'));
 router.use('/admin', require('./adminRoutes'));
+router.use('/counselor', require('./counselorRoutes'));
 router.use('/academic-updates', require('./academicUpdatesRoutes'));
 router.use('/feedback', require('./feedbackRoutes'));
 router.use('/timeline', require('./timelineRoutes'));
