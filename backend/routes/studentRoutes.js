@@ -20,6 +20,7 @@ router.get('/sessions/:id/meet-link', studentController.getMeetLink);
 router.get('/attendance', studentController.getAttendance);
 router.get('/course-attendance', studentController.getCourseAttendance);
 router.get('/notes', studentController.getMentoringNotes);
+router.get('/notepad', studentController.getNotepad);
 router.get('/announcements', announcementController.getAnnouncements);
 router.get('/activities', activityController.getMyActivities);
 router.post('/activities', activityController.createActivity);

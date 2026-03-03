@@ -1,7 +1,7 @@
 /**
  * Admin API: create users, assign mentor, view all sessions, analytics, announcements.
  */
-const { User, StudentProfile, TeacherProfile, ParentProfile, Session, Announcement, Attendance, StudentActivity, CourseAttendance } = require('../models');
+const { User, StudentProfile, TeacherProfile, ParentProfile, Session, Announcement, Attendance, StudentActivity, CourseAttendance, StudentNotepad } = require('../models');
 const bcrypt = require('bcryptjs');
 
 /**
@@ -172,6 +172,35 @@ exports.getAllStudents = async (req, res, next) => {
 };
 
 /**
+ * Admin: delete a student. :studentId = StudentProfile id.
+ * Removes student from sessions and mentors, deletes related data and User.
+ */
+exports.deleteStudent = async (req, res, next) => {
+  try {
+    const { studentId } = req.params;
+    const profile = await StudentProfile.findById(studentId);
+    if (!profile) return res.status(404).json({ success: false, message: 'Student not found.' });
+    const userId = profile.user;
+
+    await Session.updateMany({ students: profile._id }, { $pull: { students: profile._id } });
+    await TeacherProfile.updateMany(
+      { assignedStudents: profile._id },
+      { $pull: { assignedStudents: profile._id } }
+    );
+    await Attendance.deleteMany({ student: profile._id });
+    await StudentActivity.deleteMany({ student: profile._id });
+    await CourseAttendance.deleteMany({ student: profile._id });
+    await StudentNotepad.deleteOne({ student: profile._id });
+    await StudentProfile.findByIdAndDelete(profile._id);
+    await User.findByIdAndDelete(userId);
+
+    res.json({ success: true, message: 'Student deleted.' });
+  } catch (err) {
+    next(err);
+  }
+};
+
+/**
  * Admin: list all teachers (mentors). Query: department, limit.
  */
 exports.getAllTeachers = async (req, res, next) => {
@@ -186,6 +215,28 @@ exports.getAllTeachers = async (req, res, next) => {
       .populate('assignedStudents', 'user rollNo department year')
       .populate('assignedStudents.user', 'name email');
     res.json({ success: true, teachers });
+  } catch (err) {
+    next(err);
+  }
+};
+
+/**
+ * Admin: delete a teacher. :teacherId = TeacherProfile id.
+ * Unassigns all students, deletes sessions by this teacher, then TeacherProfile and User.
+ */
+exports.deleteTeacher = async (req, res, next) => {
+  try {
+    const { teacherId } = req.params;
+    const profile = await TeacherProfile.findById(teacherId);
+    if (!profile) return res.status(404).json({ success: false, message: 'Teacher not found.' });
+    const userId = profile.user;
+
+    await StudentProfile.updateMany({ mentor: profile._id }, { $set: { mentor: null } });
+    await Session.deleteMany({ teacher: profile._id });
+    await TeacherProfile.findByIdAndDelete(profile._id);
+    await User.findByIdAndDelete(userId);
+
+    res.json({ success: true, message: 'Teacher deleted.' });
   } catch (err) {
     next(err);
   }

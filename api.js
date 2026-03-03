@@ -112,6 +112,7 @@
       attendance: function () { return request('GET', '/student/attendance'); },
       courseAttendance: function () { return request('GET', '/student/course-attendance'); },
       notes: function () { return request('GET', '/student/notes'); },
+      notepad: function () { return request('GET', '/student/notepad'); },
       activities: function (query) {
         var q = query || {};
         var params = new URLSearchParams();
@@ -127,6 +128,23 @@
       notifications: function () { return request('GET', '/notifications'); }
     },
     teacher: {
+      students: function (query) {
+        var q = query || {};
+        var params = new URLSearchParams();
+        if (q.limit) params.set('limit', q.limit);
+        var path = '/teacher/students';
+        if (params.toString()) path += '?' + params.toString();
+        return request('GET', path);
+      },
+      getStudentProgress: function (studentId) {
+        return request('GET', '/teacher/students/' + encodeURIComponent(studentId) + '/progress');
+      },
+      getStudentNotepad: function (studentId) {
+        return request('GET', '/teacher/students/' + encodeURIComponent(studentId) + '/notepad');
+      },
+      updateStudentNotepad: function (studentId, body) {
+        return request('PUT', '/teacher/students/' + encodeURIComponent(studentId) + '/notepad', body);
+      },
       sessions: function (query) {
         var q = query || {};
         var params = new URLSearchParams();
@@ -147,6 +165,9 @@
       markAllRead: function () { return request('PATCH', '/notifications/read-all'); }
     },
     admin: {
+      createUser: function (body) { return request('POST', '/admin/users', body); },
+      deleteStudent: function (studentId) { return request('DELETE', '/admin/students/' + encodeURIComponent(studentId)); },
+      deleteTeacher: function (teacherId) { return request('DELETE', '/admin/teachers/' + encodeURIComponent(teacherId)); },
       students: function (query) {
         var q = query || {};
         var params = new URLSearchParams();
@@ -221,6 +242,12 @@
         return request('GET', path);
       },
       getStudentDetail: function (studentId) { return request('GET', '/counselor/students/' + encodeURIComponent(studentId)); },
+      getStudentNotepad: function (studentId) {
+        return request('GET', '/counselor/students/' + encodeURIComponent(studentId) + '/notepad');
+      },
+      updateStudentNotepad: function (studentId, body) {
+        return request('PUT', '/counselor/students/' + encodeURIComponent(studentId) + '/notepad', body);
+      },
       updateSessionNotes: function (sessionId, body) { return request('PATCH', '/counselor/sessions/' + encodeURIComponent(sessionId) + '/notes', body); }
     },
     academicUpdates: {

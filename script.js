@@ -95,6 +95,7 @@
   var navAdminActivities = document.getElementById('nav-admin-activities');
   var navAdminUpdates = document.getElementById('nav-admin-updates');
   var navAdminStudentProgress = document.getElementById('nav-admin-student-progress');
+  var navAdminAddUser = document.getElementById('nav-admin-add-user');
   var navCounselor = document.getElementById('nav-counselor');
   function isAdminUser() {
     if (!user) return false;
@@ -102,12 +103,13 @@
     return r === 'admin' || (r && String(r).toLowerCase() === 'admin');
   }
   if (isAdminUser() && navAdminMentors) { navAdminMentors.style.display = 'flex'; navAdminMentors.style.visibility = 'visible'; }
+  if (isAdminUser() && navAdminAddUser) { navAdminAddUser.style.display = 'flex'; navAdminAddUser.style.visibility = 'visible'; }
   if (isAdminUser() && navAdminActivities) { navAdminActivities.style.display = 'flex'; navAdminActivities.style.visibility = 'visible'; }
   if (isAdminUser() && navAdminUpdates) { navAdminUpdates.style.display = 'flex'; navAdminUpdates.style.visibility = 'visible'; }
   if (isAdminUser() && navAdminStudentProgress) { navAdminStudentProgress.style.display = 'flex'; navAdminStudentProgress.style.visibility = 'visible'; }
   if (navCounselor && user && user.role === 'counselor') { navCounselor.style.display = 'none'; navCounselor.setAttribute('aria-hidden', 'true'); }
   var navNotepad = document.getElementById('nav-notepad');
-  if (navNotepad && user && (user.role === 'teacher' || user.role === 'counselor')) { navNotepad.style.display = 'flex'; navNotepad.style.visibility = 'visible'; }
+  if (navNotepad && user && (user.role === 'teacher' || user.role === 'counselor' || user.role === 'student')) { navNotepad.style.display = 'flex'; navNotepad.style.visibility = 'visible'; }
   if (user && user.role === 'counselor') {
     var navSessions = document.querySelector('.sidebar-nav .nav-item[data-page="sessions"]');
     var navMentors = document.querySelector('.sidebar-nav .nav-item[data-page="mentors"]');
@@ -119,6 +121,12 @@
     if (navProgress && navProgress.querySelector('.nav-label')) navProgress.querySelector('.nav-label').textContent = 'See progress';
     showPanel('progress');
   }
+  if (user && user.role === 'teacher') {
+    var navMentorsTeacher = document.querySelector('.sidebar-nav .nav-item[data-page="mentors"]');
+    if (navMentorsTeacher && navMentorsTeacher.querySelector('.nav-label')) navMentorsTeacher.querySelector('.nav-label').textContent = 'My students';
+    var navProgressTab = document.getElementById('nav-progress');
+    if (navProgressTab) { navProgressTab.style.display = 'none'; navProgressTab.setAttribute('aria-hidden', 'true'); }
+  }
 
   function showPanel(pageId) {
     contentPanels.forEach(function (p) {
@@ -128,6 +136,7 @@
       item.classList.toggle('active', item.getAttribute('data-page') === pageId);
     });
     if (navAdminMentors) navAdminMentors.classList.toggle('active', pageId === 'admin-mentors');
+    if (navAdminAddUser) navAdminAddUser.classList.toggle('active', pageId === 'admin-add-user');
     if (navAdminActivities) navAdminActivities.classList.toggle('active', pageId === 'admin-activities');
     if (navAdminUpdates) navAdminUpdates.classList.toggle('active', pageId === 'admin-updates');
     if (navAdminStudentProgress) navAdminStudentProgress.classList.toggle('active', pageId === 'progress');
@@ -138,6 +147,8 @@
     if (pageId === 'notepad') loadNotepadPanel();
     if (pageId === 'chat') loadChatPanel();
     if (pageId === 'admin-mentors') loadAdminMentorsPanel();
+    if (pageId === 'admin-add-user') initAdminAddUserPanel();
+    if (pageId === 'admin-add-user') { loadAdminExistingStudents(); loadAdminExistingTeachers(); }
     if (pageId === 'admin-activities') loadAdminActivitiesPanel();
     if (pageId === 'admin-updates') loadAdminAcademicUpdatesPanel();
     if (pageId === 'counselor') loadCounselorPanel();
@@ -383,22 +394,97 @@
 
   function loadSessionsPanel() {
     var tbody = document.getElementById('sessions-tbody-full');
-    if (!tbody || typeof ECS_API === 'undefined' || !user || user.role !== 'student') return;
+    var thead = document.getElementById('sessions-thead-full');
+    var hintEl = document.getElementById('sessions-panel-hint');
+    if (!tbody || typeof ECS_API === 'undefined' || !user) return;
+
+    if (user.role === 'teacher') {
+      if (hintEl) hintEl.textContent = 'Set a Meet link for each session; students will see it on their dashboard.';
+      if (thead) thead.innerHTML = '<tr><th>Session</th><th>Date</th><th>Duration</th><th>Students</th><th>Meet link</th><th>Action</th></tr>';
+      ECS_API.teacher.sessions()
+        .then(function (data) {
+          var sessions = data.sessions || [];
+          if (!sessions.length) {
+            tbody.innerHTML = '<tr><td colspan="6" class="text-muted">No sessions yet.</td></tr>';
+            return;
+          }
+          tbody.innerHTML = sessions.map(function (s) {
+            var sid = (s._id && s._id.toString()) ? s._id.toString().replace(/"/g, '&quot;') : '';
+            var dateStr = s.scheduledAt ? new Date(s.scheduledAt).toLocaleString() : '—';
+            var durationStr = (s.duration != null) ? (s.duration + ' min') : '—';
+            var students = s.students || [];
+            var studentNames = students.map(function (st) {
+              if (st && st.user && (st.user.name || st.user.email)) return st.user.name || st.user.email;
+              if (st && st.name) return st.name;
+              return null;
+            }).filter(Boolean);
+            var studentsStr = studentNames.length ? studentNames.join(', ') : (students.length ? students.length + ' student(s)' : '—');
+            var currentLink = (s.meetLink && String(s.meetLink).trim()) ? String(s.meetLink).trim().replace(/"/g, '&quot;') : '';
+            var titleSafe = (s.title || '—').replace(/</g, '&lt;').replace(/"/g, '&quot;');
+            return '<tr data-session-id="' + sid + '">' +
+              '<td>' + titleSafe + '</td>' +
+              '<td>' + dateStr + '</td>' +
+              '<td>' + durationStr + '</td>' +
+              '<td>' + (studentsStr.length > 40 ? studentsStr.slice(0, 40) + '…' : studentsStr).replace(/</g, '&lt;') + '</td>' +
+              '<td><input type="url" class="form-control session-meet-link-input" placeholder="https://meet.google.com/..." value="' + currentLink + '" data-session-id="' + sid + '" style="min-width: 200px;" /></td>' +
+              '<td><button type="button" class="btn btn-sm btn-primary save-meet-link-btn" data-session-id="' + sid + '">Save link</button></td></tr>';
+          }).join('');
+          tbody.querySelectorAll('.save-meet-link-btn').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+              var id = btn.getAttribute('data-session-id');
+              var row = btn.closest('tr');
+              var input = row ? row.querySelector('.session-meet-link-input') : null;
+              var link = input ? input.value.trim() : '';
+              if (!id) return;
+              btn.disabled = true;
+              btn.textContent = 'Saving...';
+              ECS_API.teacher.updateSession(id, { meetLink: link || undefined, isLive: !!link })
+                .then(function () {
+                  btn.textContent = 'Saved';
+                  btn.disabled = false;
+                  setTimeout(function () { btn.textContent = 'Save link'; }, 2000);
+                })
+                .catch(function () {
+                  btn.textContent = 'Error';
+                  btn.disabled = false;
+                  setTimeout(function () { btn.textContent = 'Save link'; }, 2000);
+                });
+            });
+          });
+        })
+        .catch(function () {
+          tbody.innerHTML = '<tr><td colspan="6" class="text-muted">Could not load sessions.</td></tr>';
+        });
+      return;
+    }
+
+    if (user.role !== 'student') {
+      if (hintEl) hintEl.textContent = '';
+      if (thead) thead.innerHTML = '<tr><th>Session</th><th>Mentor</th><th>Duration</th><th>Date</th><th>Join</th></tr>';
+      tbody.innerHTML = '<tr><td colspan="5" class="text-muted">My sessions is for students and teachers.</td></tr>';
+      return;
+    }
+
+    if (hintEl) hintEl.textContent = '';
+    if (thead) thead.innerHTML = '<tr><th>Session</th><th>Mentor</th><th>Duration</th><th>Date</th><th>Meet link</th><th>Join</th></tr>';
     ECS_API.student.sessionsUpcoming()
       .then(function (data) {
         var sessions = data.sessions || [];
         if (!sessions.length) {
-          tbody.innerHTML = '<tr><td colspan="5" class="text-muted">No upcoming sessions.</td></tr>';
+          tbody.innerHTML = '<tr><td colspan="6" class="text-muted">No upcoming sessions.</td></tr>';
           return;
         }
         tbody.innerHTML = sessions.map(function (s) {
           var sid = (s._id && s._id.toString()) ? s._id.toString().replace(/"/g, '&quot;') : '';
           var dateStr = s.scheduledAt ? new Date(s.scheduledAt).toLocaleString() : '—';
           var link = (s.meetLink && String(s.meetLink).trim()) ? String(s.meetLink).trim() : '';
+          var linkDisplay = link
+            ? '<a href="' + link.replace(/"/g, '&quot;').replace(/</g, '&lt;') + '" target="_blank" rel="noopener" class="meet-link-url">' + (link.length > 50 ? link.slice(0, 50) + '…' : link).replace(/</g, '&lt;') + '</a>'
+            : '—';
           var joinCell = link
             ? '<a href="#" class="join-meet-link" data-meet-link="' + link.replace(/"/g, '&quot;') + '" data-session-id="' + sid + '">Join meeting</a>'
             : (sid ? '<a href="#" class="join-meet-link-fetch" data-session-id="' + sid + '">Get link</a>' : '—');
-          return '<tr><td>' + (s.title || '—') + '</td><td>' + mentorName(s) + '</td><td>' + (s.duration ? s.duration + ' min' : '—') + '</td><td>' + dateStr + '</td><td>' + joinCell + '</td></tr>';
+          return '<tr><td>' + (s.title || '—') + '</td><td>' + mentorName(s) + '</td><td>' + (s.duration ? s.duration + ' min' : '—') + '</td><td>' + dateStr + '</td><td>' + linkDisplay + '</td><td>' + joinCell + '</td></tr>';
         }).join('');
         tbody.querySelectorAll('.join-meet-link').forEach(function (a) {
           a.addEventListener('click', function (e) {
@@ -424,7 +510,7 @@
         });
       })
       .catch(function () {
-        tbody.innerHTML = '<tr><td colspan="5" class="text-muted">Could not load sessions.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="6" class="text-muted">Could not load sessions.</td></tr>';
       });
   }
 
@@ -471,8 +557,172 @@
 
   function loadMentorsPanel() {
     var card = document.getElementById('mentor-info-card');
-    if (!card || typeof ECS_API === 'undefined') return;
-    if (!user || String(user.role).toLowerCase() !== 'student') {
+    var titleEl = document.getElementById('mentors-panel-title');
+    var teacherView = document.getElementById('teacher-students-view');
+    if (!card && !teacherView) return;
+    if (typeof ECS_API === 'undefined') return;
+    if (!user) return;
+    if (user.role === 'teacher') {
+      if (titleEl) titleEl.textContent = 'My students';
+      if (card) card.style.display = 'none';
+      if (teacherView) teacherView.style.display = 'block';
+      var teacherSelect = document.getElementById('teacher-students-select');
+      var teacherLoadBtn = document.getElementById('teacher-students-load-btn');
+      var teacherNameEl = document.getElementById('teacher-students-name');
+      var teacherStatAttended = document.getElementById('teacher-stat-attended');
+      var teacherStatMissed = document.getElementById('teacher-stat-missed');
+      var teacherStatTotal = document.getElementById('teacher-stat-total');
+      var teacherStatPercent = document.getElementById('teacher-stat-percent');
+      var teacherRateBar = document.getElementById('teacher-progress-rate-bar');
+      var teacherRateLabel = document.getElementById('teacher-progress-rate-label');
+      var teacherTrendChart = document.getElementById('teacher-progress-trend-chart');
+      var teacherTrendLabels = document.getElementById('teacher-progress-trend-labels');
+      var teacherCourseTbody = document.getElementById('teacher-course-attendance-tbody');
+      var teacherAttendTbody = document.getElementById('teacher-attendance-tbody');
+      var teacherFollowupList = document.getElementById('teacher-followup-list');
+
+      function setTeacherStats(attended, missed, total, percent) {
+        var pct = typeof percent === 'number' ? Math.round(percent) + '%' : (percent || '0%');
+        if (teacherStatAttended) teacherStatAttended.textContent = attended;
+        if (teacherStatMissed) teacherStatMissed.textContent = missed;
+        if (teacherStatTotal) teacherStatTotal.textContent = total;
+        if (teacherStatPercent) teacherStatPercent.textContent = pct;
+        if (teacherRateBar) teacherRateBar.style.width = pct;
+        if (teacherRateLabel) teacherRateLabel.textContent = pct;
+      }
+      function setTeacherTrendBars(weeklyCounts) {
+        if (!teacherTrendChart) return;
+        var max = Math.max(1, Math.max.apply(null, weeklyCounts || [0]));
+        teacherTrendChart.innerHTML = (weeklyCounts || [0, 0, 0, 0, 0, 0]).map(function (count) {
+          var h = max > 0 ? (count / max) * 100 : 0;
+          return '<div class="progress-trend-bar-wrap"><div class="progress-trend-bar" style="height: ' + h + '%" title="' + count + ' attended"></div></div>';
+        }).join('');
+        if (teacherTrendLabels) teacherTrendLabels.innerHTML = ['Wk 6', 'Wk 5', 'Wk 4', 'Wk 3', 'Wk 2', 'This wk'].map(function (l) { return '<span>' + l + '</span>'; }).join('');
+      }
+      function renderTeacherAttendanceTable(records, approvedActivities) {
+        if (!teacherAttendTbody) return;
+        var rows = [];
+        (records || []).forEach(function (r) {
+          var d = r.session && r.session.scheduledAt ? new Date(r.session.scheduledAt) : (r.createdAt ? new Date(r.createdAt) : null);
+          if (!d) return;
+          rows.push({ date: d.getTime(), dateStr: d.toLocaleDateString(), type: 'Session', details: (r.session && r.session.title ? r.session.title : 'Session') + ' – ' + (r.status || '') });
+        });
+        (approvedActivities || []).forEach(function (a) {
+          var start = a.startDate ? new Date(a.startDate) : null;
+          var end = a.endDate ? new Date(a.endDate) : (start ? new Date(start.getTime()) : null);
+          if (!start) return;
+          if (!end) end = new Date(start.getTime());
+          for (var d = new Date(start.getTime()); d <= end; d.setDate(d.getDate() + 1)) {
+            rows.push({ date: d.getTime(), dateStr: d.toLocaleDateString(), type: (a.type || 'Activity').replace(/</g, '&lt;'), details: (a.title || 'Approved activity').replace(/</g, '&lt;') });
+          }
+        });
+        rows.sort(function (x, y) { return y.date - x.date; });
+        if (!rows.length) {
+          teacherAttendTbody.innerHTML = '<tr><td colspan="3" class="text-muted">No attendance or approved activities yet.</td></tr>';
+          return;
+        }
+        teacherAttendTbody.innerHTML = rows.slice(0, 100).map(function (row) {
+          return '<tr><td>' + row.dateStr + '</td><td>' + row.type + '</td><td>' + row.details + '</td></tr>';
+        }).join('');
+      }
+
+      setTeacherStats(0, 0, 0, 0);
+      setTeacherTrendBars([0, 0, 0, 0, 0, 0]);
+      if (teacherCourseTbody) teacherCourseTbody.innerHTML = '<tr><td colspan="4" class="text-muted">Select a student above.</td></tr>';
+      if (teacherAttendTbody) teacherAttendTbody.innerHTML = '<tr><td colspan="3" class="text-muted">Select a student above.</td></tr>';
+      if (teacherFollowupList) teacherFollowupList.innerHTML = '';
+
+      ECS_API.teacher.students({ limit: 500 }).then(function (data) {
+        if (!teacherSelect) return;
+        var list = data.students || [];
+        teacherSelect.innerHTML = '<option value="">— Select student —</option>' + list.map(function (s) {
+          var id = (s._id && s._id.toString()) || '';
+          var name = (s.user && s.user.name) ? s.user.name : '';
+          var roll = s.rollNo || '';
+          var label = (name + ' (' + roll + ')').trim() || id;
+          return '<option value="' + id.replace(/"/g, '&quot;') + '">' + (label.replace(/</g, '&lt;')) + '</option>';
+        }).join('');
+      }).catch(function () {
+        if (teacherSelect) teacherSelect.innerHTML = '<option value="">— Could not load students —</option>';
+      });
+
+      if (teacherLoadBtn) {
+        teacherLoadBtn.onclick = function () {
+          var studentId = teacherSelect && teacherSelect.value ? teacherSelect.value.trim() : '';
+          if (!studentId) {
+            if (teacherNameEl) teacherNameEl.textContent = '';
+            setTeacherStats(0, 0, 0, 0);
+            setTeacherTrendBars([0, 0, 0, 0, 0, 0]);
+            if (teacherCourseTbody) teacherCourseTbody.innerHTML = '<tr><td colspan="4" class="text-muted">Select a student above.</td></tr>';
+            if (teacherAttendTbody) teacherAttendTbody.innerHTML = '<tr><td colspan="3" class="text-muted">Select a student above.</td></tr>';
+            if (teacherFollowupList) teacherFollowupList.innerHTML = '';
+            return;
+          }
+          ECS_API.teacher.getStudentProgress(studentId).then(function (data) {
+            if (teacherNameEl && data.student && data.student.user) teacherNameEl.textContent = 'Showing: ' + (data.student.user.name || '') + ' — ' + (data.student.rollNo || '');
+            var records = data.attendance || [];
+            var approved = data.approvedActivities || [];
+            var attended = 0, missed = 0;
+            records.forEach(function (r) {
+              var s = (r.status || '').toLowerCase();
+              if (s === 'present' || s === 'late' || s === 'excused') attended++;
+              else if (s === 'absent') missed++;
+            });
+            var total = attended + missed;
+            var percent = total > 0 ? (attended / total) * 100 : 0;
+            setTeacherStats(attended, missed, total, percent);
+            var now = new Date();
+            var weekCounts = [0, 0, 0, 0, 0, 0];
+            records.forEach(function (r) {
+              var d = r.createdAt ? new Date(r.createdAt) : (r.session && r.session.scheduledAt ? new Date(r.session.scheduledAt) : null);
+              if (!d) return;
+              var weeksAgo = Math.floor((now - d) / (7 * 24 * 60 * 60 * 1000));
+              if (weeksAgo >= 0 && weeksAgo <= 5) {
+                var st = (r.status || '').toLowerCase();
+                if (st === 'present' || st === 'late' || st === 'excused') weekCounts[5 - weeksAgo]++;
+              }
+            });
+            setTeacherTrendBars(weekCounts);
+            renderTeacherAttendanceTable(records, approved);
+            var list = data.courseAttendance || [];
+            if (teacherCourseTbody) {
+              if (!list.length) teacherCourseTbody.innerHTML = '<tr><td colspan="4" class="text-muted">No course attendance records for this student.</td></tr>';
+              else teacherCourseTbody.innerHTML = list.map(function (c) {
+                var name = (c.courseName || c.courseCode || '').replace(/</g, '&lt;');
+                var att = c.attended != null ? c.attended : '—';
+                var tot = c.totalLectures != null ? c.totalLectures : '—';
+                var pct = c.percentage != null ? (Math.round(c.percentage) + '%') : '—';
+                return '<tr><td>' + name + '</td><td>' + att + '</td><td>' + tot + '</td><td>' + pct + '</td></tr>';
+              }).join('');
+            }
+            var followUp = data.followUp || [];
+            if (teacherFollowupList) {
+              if (!followUp.length) teacherFollowupList.innerHTML = '<p class="text-muted">No sessions with follow-up notes for this student yet.</p>';
+              else teacherFollowupList.innerHTML = followUp.map(function (f) {
+                var dateStr = f.scheduledAt ? new Date(f.scheduledAt).toLocaleDateString() : '—';
+                var title = (f.title || 'Session').replace(/</g, '&lt;');
+                var notes = (f.mentoringNotes || '').replace(/</g, '&lt;').replace(/\n/g, '<br>');
+                var mentor = (f.mentorName || '').replace(/</g, '&lt;');
+                return '<div class="followup-note-item" style="margin-bottom: 1rem; padding: 1rem; border: 1px solid var(--glass-border, #e2e8f0); border-radius: 8px;"><strong>' + title + '</strong> – ' + dateStr + (mentor ? ' (Mentor: ' + mentor + ')' : '') + '<div style="margin-top: 0.5rem;">' + (notes || '—') + '</div></div>';
+              }).join('');
+            }
+          }).catch(function (err) {
+            if (teacherNameEl) teacherNameEl.textContent = '';
+            setTeacherStats(0, 0, 0, 0);
+            setTeacherTrendBars([0, 0, 0, 0, 0, 0]);
+            if (teacherCourseTbody) teacherCourseTbody.innerHTML = '<tr><td colspan="4" class="text-muted">Select a student above.</td></tr>';
+            if (teacherAttendTbody) teacherAttendTbody.innerHTML = '<tr><td colspan="3" class="text-muted">Select a student above.</td></tr>';
+            if (teacherFollowupList) teacherFollowupList.innerHTML = '';
+            alert(err.message || 'Could not load student progress.');
+          });
+        };
+      }
+      return;
+    }
+    if (titleEl) titleEl.textContent = 'My mentor';
+    if (teacherView) teacherView.style.display = 'none';
+    if (card) card.style.display = 'block';
+    if (String(user.role).toLowerCase() !== 'student') {
       card.innerHTML = '<p class="text-muted">Mentor info is shown when you are logged in as a <strong>Student</strong>.</p>';
       return;
     }
@@ -1028,160 +1278,174 @@
   var chatConversations = [];
 
   function loadNotepadPanel() {
+    var studentView = document.getElementById('notepad-student-view');
     var teacherView = document.getElementById('notepad-teacher-view');
     var counselorView = document.getElementById('notepad-counselor-view');
     var noAccess = document.getElementById('notepad-no-access');
-    var teacherList = document.getElementById('notepad-teacher-list');
-    var counselorList = document.getElementById('notepad-counselor-list');
-    var counselorStudentSelect = document.getElementById('notepad-counselor-student-select');
-    var counselorLoadBtn = document.getElementById('notepad-counselor-load-btn');
+    if (studentView) studentView.style.display = 'none';
     if (teacherView) teacherView.style.display = 'none';
     if (counselorView) counselorView.style.display = 'none';
     if (noAccess) noAccess.style.display = 'none';
-    if (!user) return;
-    if (user.role === 'teacher' && typeof ECS_API !== 'undefined') {
-      if (teacherView) teacherView.style.display = 'block';
-      if (!teacherList) return;
-      ECS_API.teacher.sessions({ limit: 100 })
-        .then(function (data) {
-          var sessions = data.sessions || [];
-          if (sessions.length === 0) {
-            teacherList.innerHTML = '<p class="text-muted">No sessions yet. Create sessions (e.g. via Add Google Meet link in Mentoring or ask admin) and assign your mentees. Then you can add follow-up notes here.</p>';
-            return;
-          }
-          teacherList.innerHTML = sessions.map(function (s) {
-            var id = (s._id && s._id.toString()) ? s._id.toString() : '';
-            var title = (s.title || 'Session').replace(/</g, '&lt;');
-            var dateStr = s.scheduledAt ? new Date(s.scheduledAt).toLocaleString() : '—';
-            var studentsStr = (s.students && s.students.length) ? s.students.map(function (st) { return (st.user && st.user.name) ? st.user.name : (st.rollNo || 'Student'); }).join(', ') : '—';
-            var notes = (s.mentoringNotes || '').replace(/</g, '&lt;').replace(/"/g, '&quot;');
-            return '<div class="teacher-note-card" style="margin-bottom: 1rem; padding: 1rem; border: 1px solid var(--glass-border, #e2e8f0); border-radius: 8px;" data-session-id="' + id + '">' +
-              '<div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 0.5rem;">' +
-              '<div><strong>' + title + '</strong> — ' + dateStr + '</div>' +
-              '<button type="button" class="btn-continue btn-continue--lime btn-save-session-note" data-session-id="' + id + '" style="padding: 0.35rem 0.75rem; font-size: 0.875rem;">Save notes</button>' +
-              '</div>' +
-              '<p class="text-muted" style="margin: 0.35rem 0 0.5rem 0; font-size: 0.875rem;">Students: ' + studentsStr.replace(/</g, '&lt;') + '</p>' +
-              '<textarea class="session-notes-textarea settings-input" data-session-id="' + id + '" rows="3" placeholder="Follow-up notes for next time (visible to student and counselor)...">' + notes + '</textarea>' +
-              '<p class="session-note-message text-muted" data-session-id="' + id + '" style="margin-top: 0.35rem; font-size: 0.875rem; min-height: 1.25rem;"></p>' +
-              '</div>';
-          }).join('');
-          teacherList.querySelectorAll('.btn-save-session-note').forEach(function (btn) {
-            btn.addEventListener('click', function () {
-              var sessionId = btn.getAttribute('data-session-id');
-              var card = teacherList.querySelector('.teacher-note-card[data-session-id="' + sessionId + '"]');
-              var textarea = card ? card.querySelector('.session-notes-textarea') : null;
-              var msgEl = card ? card.querySelector('.session-note-message') : null;
-              if (!sessionId || !textarea) return;
-              var notes = textarea.value.trim();
-              btn.disabled = true;
-              if (msgEl) msgEl.textContent = 'Saving...';
-              ECS_API.teacher.updateSession(sessionId, { mentoringNotes: notes || null })
-                .then(function () {
-                  if (msgEl) { msgEl.textContent = 'Saved.'; msgEl.style.color = ''; }
-                  btn.disabled = false;
-                })
-                .catch(function (err) {
-                  if (msgEl) { msgEl.textContent = err.message || 'Failed to save.'; msgEl.style.color = '#dc2626'; }
-                  btn.disabled = false;
-                });
-            });
-          });
-        })
-        .catch(function () {
-          teacherList.innerHTML = '<p class="text-muted">Could not load sessions for notes.</p>';
-        });
+    if (!user || typeof ECS_API === 'undefined') return;
+    if (user.role === 'student') {
+      if (studentView) studentView.style.display = 'block';
+      var studentContent = document.getElementById('notepad-student-content');
+      var studentUpdated = document.getElementById('notepad-student-updated');
+      if (studentContent) studentContent.value = '';
+      if (studentUpdated) studentUpdated.textContent = '';
+      ECS_API.student.notepad().then(function (data) {
+        var n = data.notepad || {};
+        if (studentContent) studentContent.value = n.content || '';
+        if (studentUpdated && n.updatedAt) studentUpdated.textContent = 'Last updated: ' + new Date(n.updatedAt).toLocaleString();
+      }).catch(function () {
+        if (studentContent) studentContent.value = '';
+      });
       return;
     }
-    if (user.role === 'counselor' && typeof ECS_API !== 'undefined') {
-      if (counselorView) counselorView.style.display = 'block';
-      if (counselorList) counselorList.innerHTML = '<p class="text-muted">Select a student and click Load notes.</p>';
-      ECS_API.counselor.getStudents({ limit: 500 }).then(function (data) {
-        if (!counselorStudentSelect) return;
+    if (user.role === 'teacher') {
+      if (teacherView) teacherView.style.display = 'block';
+      var teacherSelect = document.getElementById('notepad-teacher-student-select');
+      var teacherLoadBtn = document.getElementById('notepad-teacher-load-btn');
+      var teacherNameEl = document.getElementById('notepad-teacher-student-name');
+      var teacherContent = document.getElementById('notepad-teacher-content');
+      var teacherUpdated = document.getElementById('notepad-teacher-updated');
+      var teacherSaveBtn = document.getElementById('notepad-teacher-save-btn');
+      var teacherMessage = document.getElementById('notepad-teacher-message');
+      if (teacherContent) teacherContent.value = '';
+      if (teacherUpdated) teacherUpdated.textContent = '';
+      if (teacherNameEl) teacherNameEl.textContent = '';
+      ECS_API.teacher.students({ limit: 500 }).then(function (data) {
         var list = data.students || [];
-        counselorStudentSelect.innerHTML = '<option value="">— Select student —</option>' + list.map(function (s) {
-          var id = (s._id && s._id.toString()) || '';
-          var name = (s.user && s.user.name) ? s.user.name : '';
-          var roll = s.rollNo || '';
-          var label = (name + ' (' + roll + ')').trim() || id;
-          return '<option value="' + id.replace(/"/g, '&quot;') + '">' + (label.replace(/</g, '&lt;')) + '</option>';
-        }).join('');
+        if (teacherSelect) {
+          teacherSelect.innerHTML = '<option value="">— Select student —</option>' + list.map(function (s) {
+            var id = (s._id && s._id.toString()) || '';
+            var name = (s.user && s.user.name) ? s.user.name : '';
+            var roll = s.rollNo || '';
+            var label = (name + ' (' + roll + ')').trim() || id;
+            return '<option value="' + id.replace(/"/g, '&quot;') + '">' + (label.replace(/</g, '&lt;')) + '</option>';
+          }).join('');
+        }
       }).catch(function () {
-        if (counselorStudentSelect) counselorStudentSelect.innerHTML = '<option value="">— Could not load students —</option>';
+        if (teacherSelect) teacherSelect.innerHTML = '<option value="">— Could not load students —</option>';
+      });
+      if (teacherLoadBtn) {
+        teacherLoadBtn.onclick = function () {
+          var studentId = teacherSelect && teacherSelect.value ? teacherSelect.value.trim() : '';
+          if (!studentId) return;
+          var opt = teacherSelect && teacherSelect.options[teacherSelect.selectedIndex];
+          if (teacherNameEl && opt) teacherNameEl.textContent = 'Notepad for: ' + (opt.textContent || '');
+          if (teacherContent) teacherContent.value = '';
+          if (teacherUpdated) teacherUpdated.textContent = '';
+          ECS_API.teacher.getStudentNotepad(studentId).then(function (data) {
+            var n = data.notepad || {};
+            if (teacherContent) teacherContent.value = n.content || '';
+            if (teacherUpdated && n.updatedAt) teacherUpdated.textContent = 'Last updated: ' + new Date(n.updatedAt).toLocaleString();
+          }).catch(function () {
+            if (teacherContent) teacherContent.value = '';
+          });
+        };
+      }
+      if (teacherSaveBtn) {
+        teacherSaveBtn.onclick = function () {
+          var studentId = teacherSelect && teacherSelect.value ? teacherSelect.value.trim() : '';
+          if (!studentId) { if (teacherMessage) teacherMessage.textContent = 'Select a student first.'; return; }
+          var content = teacherContent ? teacherContent.value : '';
+          teacherSaveBtn.disabled = true;
+          if (teacherMessage) teacherMessage.textContent = 'Saving...';
+          ECS_API.teacher.updateStudentNotepad(studentId, { content: content }).then(function (data) {
+            if (teacherMessage) teacherMessage.textContent = 'Saved.';
+            teacherMessage.style.color = '';
+            teacherSaveBtn.disabled = false;
+            var n = data.notepad || {};
+            if (teacherUpdated && n.updatedAt) teacherUpdated.textContent = 'Last updated: ' + new Date(n.updatedAt).toLocaleString();
+          }).catch(function (err) {
+            if (teacherMessage) teacherMessage.textContent = err.message || 'Failed to save.';
+            teacherMessage.style.color = '#dc2626';
+            teacherSaveBtn.disabled = false;
+          });
+        };
+      }
+      return;
+    }
+    if (user.role === 'counselor') {
+      if (counselorView) counselorView.style.display = 'block';
+      var counselorSelect = document.getElementById('notepad-counselor-student-select');
+      var counselorLoadBtn = document.getElementById('notepad-counselor-load-btn');
+      var counselorNameEl = document.getElementById('notepad-counselor-student-name');
+      var counselorMentorEl = document.getElementById('notepad-counselor-mentor');
+      var counselorContent = document.getElementById('notepad-counselor-content');
+      var counselorUpdated = document.getElementById('notepad-counselor-updated');
+      var counselorSaveBtn = document.getElementById('notepad-counselor-save-btn');
+      var counselorMessage = document.getElementById('notepad-counselor-message');
+      if (counselorContent) counselorContent.value = '';
+      if (counselorUpdated) counselorUpdated.textContent = '';
+      if (counselorNameEl) counselorNameEl.textContent = '';
+      if (counselorMentorEl) counselorMentorEl.textContent = '';
+      ECS_API.counselor.getStudents({ limit: 500 }).then(function (data) {
+        var list = data.students || [];
+        if (counselorSelect) {
+          counselorSelect.innerHTML = '<option value="">— Select student —</option>' + list.map(function (s) {
+            var id = (s._id && s._id.toString()) || '';
+            var name = (s.user && s.user.name) ? s.user.name : '';
+            var roll = s.rollNo || '';
+            var label = (name + ' (' + roll + ')').trim() || id;
+            return '<option value="' + id.replace(/"/g, '&quot;') + '">' + (label.replace(/</g, '&lt;')) + '</option>';
+          }).join('');
+        }
+      }).catch(function () {
+        if (counselorSelect) counselorSelect.innerHTML = '<option value="">— Could not load students —</option>';
       });
       if (counselorLoadBtn) {
         counselorLoadBtn.onclick = function () {
-          var studentId = counselorStudentSelect && counselorStudentSelect.value ? counselorStudentSelect.value.trim() : '';
-          if (!studentId || !counselorList) return;
-          counselorList.innerHTML = '<p class="text-muted">Loading...</p>';
-          ECS_API.counselor.getStudentDetail(studentId).then(function (data) {
-            var followUp = data.followUp || [];
-            if (followUp.length === 0) {
-              counselorList.innerHTML = '<p class="text-muted">No sessions for this student yet. Sessions and follow-up notes will appear here once the student is added to mentoring sessions.</p>';
-              return;
+          var studentId = counselorSelect && counselorSelect.value ? counselorSelect.value.trim() : '';
+          if (!studentId) return;
+          var opt = counselorSelect && counselorSelect.options[counselorSelect.selectedIndex];
+          if (counselorNameEl && opt) counselorNameEl.textContent = 'Notepad for: ' + (opt.textContent || '');
+          if (counselorContent) counselorContent.value = '';
+          if (counselorUpdated) counselorUpdated.textContent = '';
+          if (counselorMentorEl) counselorMentorEl.textContent = 'Loading...';
+          Promise.all([
+            ECS_API.counselor.getStudentDetail(studentId),
+            ECS_API.counselor.getStudentNotepad(studentId)
+          ]).then(function (results) {
+            var detail = results[0];
+            var notepadData = results[1];
+            var student = detail.student;
+            if (counselorMentorEl) {
+              if (student && student.mentor && student.mentor.user) {
+                var mentorName = (student.mentor.user.name || 'Mentor').replace(/</g, '&lt;');
+                var mentorEmail = (student.mentor.user.email || '').replace(/</g, '&lt;');
+                counselorMentorEl.innerHTML = 'Assigned mentor: <strong>' + mentorName + '</strong>' + (mentorEmail ? ' (' + mentorEmail + ')' : '');
+              } else {
+                counselorMentorEl.textContent = 'Assigned mentor: —';
+              }
             }
-            counselorList.innerHTML = followUp.map(function (f) {
-              var sid = (f.sessionId && f.sessionId.toString) ? f.sessionId.toString() : (f.sessionId || '');
-              var dateStr = f.scheduledAt ? new Date(f.scheduledAt).toLocaleDateString() : '—';
-              var title = (f.title || 'Session').replace(/</g, '&lt;');
-              var mentor = (f.mentorName || '').replace(/</g, '&lt;');
-              var notesVal = (f.mentoringNotes || '').replace(/"/g, '&quot;').replace(/</g, '&lt;');
-              return '<div class="followup-note-item followup-note-item--editable" style="margin-bottom: 1rem; padding: 1rem; border: 1px solid var(--glass-border, #e2e8f0); border-radius: 8px;" data-session-id="' + sid + '">' +
-                '<div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 0.5rem;">' +
-                '<div><strong>' + title + '</strong> – ' + dateStr + (mentor ? ' (Mentor: ' + mentor + ')' : '') + '</div>' +
-                '<button type="button" class="btn-continue btn-continue--lime btn-save-followup-note" data-session-id="' + sid + '" style="padding: 0.35rem 0.75rem; font-size: 0.875rem;">Save notes</button>' +
-                '</div>' +
-                '<label class="settings-label" style="margin-top: 0.5rem;">Follow-up notes (visible to student and mentor)</label>' +
-                '<textarea class="followup-notes-textarea settings-input" data-session-id="' + sid + '" rows="3" placeholder="Add or edit follow-up notes for next time...">' + notesVal + '</textarea>' +
-                '<p class="followup-note-msg text-muted" data-session-id="' + sid + '" style="margin-top: 0.25rem; font-size: 0.875rem; min-height: 1.25rem;"></p>' +
-                '</div>';
-            }).join('');
-            if (!counselorList._notepadCounselorSaveBound) {
-              counselorList._notepadCounselorSaveBound = true;
-              counselorList.addEventListener('click', function (e) {
-                var btn = e.target && e.target.closest ? e.target.closest('.btn-save-followup-note') : null;
-                if (!btn) return;
-                var sessionId = btn.getAttribute('data-session-id');
-                var selectedStudentId = counselorStudentSelect && counselorStudentSelect.value ? counselorStudentSelect.value.trim() : '';
-                if (!sessionId || !selectedStudentId || !ECS_API.counselor.updateSessionNotes) return;
-                var card = counselorList.querySelector('.followup-note-item[data-session-id="' + sessionId + '"]');
-                var textarea = card ? card.querySelector('.followup-notes-textarea') : null;
-                var msgEl = card ? card.querySelector('.followup-note-msg') : null;
-                if (!textarea) return;
-                var notes = textarea.value.trim();
-                btn.disabled = true;
-                if (msgEl) msgEl.textContent = 'Saving...';
-                ECS_API.counselor.updateSessionNotes(sessionId, { mentoringNotes: notes || null })
-                  .then(function () {
-                    if (msgEl) { msgEl.textContent = 'Saved.'; msgEl.style.color = ''; }
-                    btn.disabled = false;
-                    ECS_API.counselor.getStudentDetail(selectedStudentId).then(function (data) {
-                      var followUp = data.followUp || [];
-                      counselorList.innerHTML = followUp.length === 0 ? '<p class="text-muted">No sessions.</p>' : followUp.map(function (f) {
-                        var sid = (f.sessionId && f.sessionId.toString) ? f.sessionId.toString() : (f.sessionId || '');
-                        var dateStr = f.scheduledAt ? new Date(f.scheduledAt).toLocaleDateString() : '—';
-                        var title = (f.title || 'Session').replace(/</g, '&lt;');
-                        var mentor = (f.mentorName || '').replace(/</g, '&lt;');
-                        var notesVal = (f.mentoringNotes || '').replace(/"/g, '&quot;').replace(/</g, '&lt;');
-                        return '<div class="followup-note-item followup-note-item--editable" style="margin-bottom: 1rem; padding: 1rem; border: 1px solid var(--glass-border, #e2e8f0); border-radius: 8px;" data-session-id="' + sid + '">' +
-                          '<div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 0.5rem;">' +
-                          '<div><strong>' + title + '</strong> – ' + dateStr + (mentor ? ' (Mentor: ' + mentor + ')' : '') + '</div>' +
-                          '<button type="button" class="btn-continue btn-continue--lime btn-save-followup-note" data-session-id="' + sid + '" style="padding: 0.35rem 0.75rem; font-size: 0.875rem;">Save notes</button>' +
-                          '</div>' +
-                          '<label class="settings-label" style="margin-top: 0.5rem;">Follow-up notes (visible to student and mentor)</label>' +
-                          '<textarea class="followup-notes-textarea settings-input" data-session-id="' + sid + '" rows="3" placeholder="Add or edit follow-up notes for next time...">' + notesVal + '</textarea>' +
-                          '<p class="followup-note-msg text-muted" data-session-id="' + sid + '" style="margin-top: 0.25rem; font-size: 0.875rem; min-height: 1.25rem;"></p>' +
-                          '</div>';
-                      }).join('');
-                    }).catch(function () {});
-                  })
-                  .catch(function (err) {
-                    if (msgEl) { msgEl.textContent = (err && err.message) || 'Failed to save.'; msgEl.style.color = '#dc2626'; }
-                    btn.disabled = false;
-                  });
-              });
-            }
+            var n = notepadData.notepad || {};
+            if (counselorContent) counselorContent.value = n.content || '';
+            if (counselorUpdated && n.updatedAt) counselorUpdated.textContent = 'Last updated: ' + new Date(n.updatedAt).toLocaleString();
           }).catch(function () {
-            counselorList.innerHTML = '<p class="text-muted">Could not load notes for this student.</p>';
+            if (counselorMentorEl) counselorMentorEl.textContent = 'Assigned mentor: —';
+            if (counselorContent) counselorContent.value = '';
+          });
+        };
+      }
+      if (counselorSaveBtn) {
+        counselorSaveBtn.onclick = function () {
+          var studentId = counselorSelect && counselorSelect.value ? counselorSelect.value.trim() : '';
+          if (!studentId) { if (counselorMessage) counselorMessage.textContent = 'Select a student first.'; return; }
+          var content = counselorContent ? counselorContent.value : '';
+          counselorSaveBtn.disabled = true;
+          if (counselorMessage) counselorMessage.textContent = 'Saving...';
+          ECS_API.counselor.updateStudentNotepad(studentId, { content: content }).then(function (data) {
+            if (counselorMessage) counselorMessage.textContent = 'Saved.';
+            counselorMessage.style.color = '';
+            counselorSaveBtn.disabled = false;
+            var n = data.notepad || {};
+            if (counselorUpdated && n.updatedAt) counselorUpdated.textContent = 'Last updated: ' + new Date(n.updatedAt).toLocaleString();
+          }).catch(function (err) {
+            if (counselorMessage) counselorMessage.textContent = err.message || 'Failed to save.';
+            counselorMessage.style.color = '#dc2626';
+            counselorSaveBtn.disabled = false;
           });
         };
       }
@@ -1521,6 +1785,221 @@
       }
       next();
     });
+  }
+
+  function initAdminAddUserPanel() {
+    if (typeof ECS_API === 'undefined' || !user || user.role !== 'admin') return;
+    var tabStudent = document.getElementById('admin-add-user-tab-student');
+    var tabTeacher = document.getElementById('admin-add-user-tab-teacher');
+    var formStudent = document.getElementById('admin-add-user-form-student');
+    var formTeacher = document.getElementById('admin-add-user-form-teacher');
+    var formStudentEl = document.getElementById('admin-create-student-form');
+    var formTeacherEl = document.getElementById('admin-create-teacher-form');
+    var msgStudent = document.getElementById('admin-create-student-message');
+    var msgTeacher = document.getElementById('admin-create-teacher-message');
+
+    if (!tabStudent || !tabTeacher || !formStudent || !formTeacher) return;
+
+    if (window._adminAddUserPanelInitialized) return;
+    window._adminAddUserPanelInitialized = true;
+
+    tabStudent.addEventListener('click', function () {
+      formStudent.style.display = '';
+      formTeacher.style.display = 'none';
+      tabStudent.setAttribute('aria-pressed', 'true');
+      tabTeacher.setAttribute('aria-pressed', 'false');
+      if (msgStudent) msgStudent.textContent = '';
+      if (msgTeacher) msgTeacher.textContent = '';
+    });
+    tabTeacher.addEventListener('click', function () {
+      formStudent.style.display = 'none';
+      formTeacher.style.display = '';
+      tabStudent.setAttribute('aria-pressed', 'false');
+      tabTeacher.setAttribute('aria-pressed', 'true');
+      if (msgStudent) msgStudent.textContent = '';
+      if (msgTeacher) msgTeacher.textContent = '';
+    });
+
+    if (formStudentEl) {
+      formStudentEl.addEventListener('submit', function (e) {
+        e.preventDefault();
+        var name = document.getElementById('admin-student-name') && document.getElementById('admin-student-name').value.trim();
+        var email = document.getElementById('admin-student-email') && document.getElementById('admin-student-email').value.trim();
+        var password = document.getElementById('admin-student-password') && document.getElementById('admin-student-password').value;
+        var rollNo = document.getElementById('admin-student-rollno') && document.getElementById('admin-student-rollno').value.trim();
+        var department = document.getElementById('admin-student-department') && document.getElementById('admin-student-department').value.trim();
+        var yearEl = document.getElementById('admin-student-year');
+        var year = yearEl && yearEl.value !== '' ? parseInt(yearEl.value, 10) : undefined;
+        if (!name || !email || !password || !rollNo) {
+          if (msgStudent) { msgStudent.textContent = 'Please fill name, email, password, and roll number.'; msgStudent.style.color = '#dc2626'; }
+          return;
+        }
+        if (msgStudent) { msgStudent.textContent = 'Creating...'; msgStudent.style.color = ''; }
+        var btn = document.getElementById('admin-create-student-btn');
+        if (btn) btn.disabled = true;
+        ECS_API.admin.createUser({
+          email: email,
+          password: password,
+          name: name,
+          role: 'student',
+          profileData: { rollNo: rollNo, department: department || 'CSE', year: year }
+        })
+          .then(function (data) {
+            if (msgStudent) { msgStudent.textContent = 'Student created successfully. They can log in with ' + email + '.'; msgStudent.style.color = '#16a34a'; }
+            formStudentEl.reset();
+            if (document.getElementById('admin-student-department')) document.getElementById('admin-student-department').value = 'CSE';
+            if (btn) btn.disabled = false;
+            if (typeof loadAdminExistingStudents === 'function') loadAdminExistingStudents();
+          })
+          .catch(function (err) {
+            if (msgStudent) { msgStudent.textContent = err.message || err.error || 'Failed to create student.'; msgStudent.style.color = '#dc2626'; }
+            if (btn) btn.disabled = false;
+          });
+      });
+    }
+
+    if (formTeacherEl) {
+      formTeacherEl.addEventListener('submit', function (e) {
+        e.preventDefault();
+        var name = document.getElementById('admin-teacher-name') && document.getElementById('admin-teacher-name').value.trim();
+        var email = document.getElementById('admin-teacher-email') && document.getElementById('admin-teacher-email').value.trim();
+        var password = document.getElementById('admin-teacher-password') && document.getElementById('admin-teacher-password').value;
+        var employeeId = document.getElementById('admin-teacher-employeeid') && document.getElementById('admin-teacher-employeeid').value.trim();
+        var department = document.getElementById('admin-teacher-department') && document.getElementById('admin-teacher-department').value.trim();
+        var designation = document.getElementById('admin-teacher-designation') && document.getElementById('admin-teacher-designation').value.trim();
+        if (!name || !email || !password || !department) {
+          if (msgTeacher) { msgTeacher.textContent = 'Please fill name, email, password, and department.'; msgTeacher.style.color = '#dc2626'; }
+          return;
+        }
+        if (msgTeacher) { msgTeacher.textContent = 'Creating...'; msgTeacher.style.color = ''; }
+        var btn = document.getElementById('admin-create-teacher-btn');
+        if (btn) btn.disabled = true;
+        ECS_API.admin.createUser({
+          email: email,
+          password: password,
+          name: name,
+          role: 'teacher',
+          profileData: { employeeId: employeeId || undefined, department: department, designation: designation || undefined }
+        })
+          .then(function (data) {
+            if (msgTeacher) { msgTeacher.textContent = 'Teacher created successfully. They can log in with ' + email + '.'; msgTeacher.style.color = '#16a34a'; }
+            formTeacherEl.reset();
+            if (btn) btn.disabled = false;
+            if (typeof loadAdminExistingTeachers === 'function') loadAdminExistingTeachers();
+          })
+          .catch(function (err) {
+            if (msgTeacher) { msgTeacher.textContent = err.message || err.error || 'Failed to create teacher.'; msgTeacher.style.color = '#dc2626'; }
+            if (btn) btn.disabled = false;
+          });
+      });
+    }
+  }
+
+  function renderAdminExistingStudentsTable() {
+    var tbody = document.getElementById('admin-existing-students-tbody');
+    var searchEl = document.getElementById('admin-existing-students-search');
+    var list = window._adminExistingStudentsList || [];
+    var q = (searchEl && searchEl.value.trim()) ? searchEl.value.trim().toLowerCase() : '';
+    var filtered = q ? list.filter(function (s) {
+      var name = (s.user && s.user.name) || '';
+      var email = (s.user && s.user.email) || '';
+      var rollNo = String(s.rollNo || '').toLowerCase();
+      return name.toLowerCase().indexOf(q) !== -1 || email.toLowerCase().indexOf(q) !== -1 || rollNo.indexOf(q) !== -1;
+    }) : list;
+    if (!tbody) return;
+    if (!filtered.length) {
+      tbody.innerHTML = '<tr><td colspan="6" class="text-muted">' + (q ? 'No students match your search.' : 'No students.') + '</td></tr>';
+      return;
+    }
+    tbody.innerHTML = filtered.map(function (s) {
+      var id = (s._id && s._id.toString()) ? s._id.toString().replace(/"/g, '&quot;') : '';
+      var name = ((s.user && s.user.name) || '—').replace(/</g, '&lt;');
+      var email = ((s.user && s.user.email) || '—').replace(/</g, '&lt;');
+      var rollNo = (s.rollNo || '—').replace(/</g, '&lt;');
+      var dept = (s.department || '—').replace(/</g, '&lt;');
+      var year = s.year != null ? s.year : '—';
+      return '<tr><td>' + name + '</td><td>' + email + '</td><td>' + rollNo + '</td><td>' + dept + '</td><td>' + year + '</td><td><button type="button" class="btn-delete-student btn-activity-reject" data-student-id="' + id + '">Delete</button></td></tr>';
+    }).join('');
+    tbody.querySelectorAll('.btn-delete-student').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var studentId = btn.getAttribute('data-student-id');
+        if (!studentId || !confirm('Permanently delete this student and all their data? This cannot be undone.')) return;
+        btn.disabled = true;
+        btn.textContent = 'Deleting...';
+        ECS_API.admin.deleteStudent(studentId)
+          .then(function () {
+            loadAdminExistingStudents();
+          })
+          .catch(function (err) {
+            btn.disabled = false;
+            btn.textContent = 'Delete';
+            alert(err.message || 'Failed to delete student.');
+          });
+      });
+    });
+  }
+
+  function loadAdminExistingStudents() {
+    var tbody = document.getElementById('admin-existing-students-tbody');
+    var searchEl = document.getElementById('admin-existing-students-search');
+    if (!tbody || typeof ECS_API === 'undefined' || !user || user.role !== 'admin') return;
+    tbody.innerHTML = '<tr><td colspan="6" class="text-muted">Loading...</td></tr>';
+    ECS_API.admin.students()
+      .then(function (data) {
+        var list = data.students || [];
+        window._adminExistingStudentsList = list;
+        if (searchEl && !searchEl._searchBound) {
+          searchEl._searchBound = true;
+          searchEl.addEventListener('input', function () { renderAdminExistingStudentsTable(); });
+          searchEl.addEventListener('keyup', function () { renderAdminExistingStudentsTable(); });
+        }
+        renderAdminExistingStudentsTable();
+      })
+      .catch(function () {
+        tbody.innerHTML = '<tr><td colspan="6" class="text-muted">Could not load students.</td></tr>';
+      });
+  }
+
+  function loadAdminExistingTeachers() {
+    var tbody = document.getElementById('admin-existing-teachers-tbody');
+    if (!tbody || typeof ECS_API === 'undefined' || !user || user.role !== 'admin') return;
+    tbody.innerHTML = '<tr><td colspan="5" class="text-muted">Loading...</td></tr>';
+    ECS_API.admin.teachers()
+      .then(function (data) {
+        var list = data.teachers || [];
+        if (!list.length) {
+          tbody.innerHTML = '<tr><td colspan="5" class="text-muted">No teachers.</td></tr>';
+          return;
+        }
+        tbody.innerHTML = list.map(function (t) {
+          var id = (t._id && t._id.toString()) ? t._id.toString().replace(/"/g, '&quot;') : '';
+          var name = ((t.user && t.user.name) || '—').replace(/</g, '&lt;');
+          var email = ((t.user && t.user.email) || '—').replace(/</g, '&lt;');
+          var dept = (t.department || '—').replace(/</g, '&lt;');
+          var des = (t.designation || '—').replace(/</g, '&lt;');
+          return '<tr><td>' + name + '</td><td>' + email + '</td><td>' + dept + '</td><td>' + des + '</td><td><button type="button" class="btn-delete-teacher btn-activity-reject" data-teacher-id="' + id + '">Delete</button></td></tr>';
+        }).join('');
+        tbody.querySelectorAll('.btn-delete-teacher').forEach(function (btn) {
+          btn.addEventListener('click', function () {
+            var teacherId = btn.getAttribute('data-teacher-id');
+            if (!teacherId || !confirm('Permanently delete this teacher? Their assigned students will be unassigned and their sessions removed. This cannot be undone.')) return;
+            btn.disabled = true;
+            btn.textContent = 'Deleting...';
+            ECS_API.admin.deleteTeacher(teacherId)
+              .then(function () {
+                loadAdminExistingTeachers();
+              })
+              .catch(function (err) {
+                btn.disabled = false;
+                btn.textContent = 'Delete';
+                alert(err.message || 'Failed to delete teacher.');
+              });
+          });
+        });
+      })
+      .catch(function () {
+        tbody.innerHTML = '<tr><td colspan="5" class="text-muted">Could not load teachers.</td></tr>';
+      });
   }
 
   function loadAdminMentorsPanel() {

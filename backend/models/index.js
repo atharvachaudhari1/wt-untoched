@@ -16,4 +16,5 @@ module.exports = {
   StudentActivity: require('./StudentActivity'),
   CourseAttendance: require('./CourseAttendance'),
   AcademicUpdate: require('./AcademicUpdate'),
+  StudentNotepad: require('./StudentNotepad'),
 };

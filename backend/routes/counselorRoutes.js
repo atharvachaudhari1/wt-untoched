@@ -12,6 +12,8 @@ router.use(authorizeRoles('counselor'));
 
 router.get('/students', counselorController.getStudents);
 router.get('/students/:studentId', counselorController.getStudentDetail);
+router.get('/students/:studentId/notepad', counselorController.getStudentNotepad);
+router.put('/students/:studentId/notepad', counselorController.updateStudentNotepad);
 router.patch('/sessions/:sessionId/notes', counselorController.updateSessionNotes);
 
 module.exports = router;

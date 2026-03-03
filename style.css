@@ -1915,3 +1915,33 @@ img {
     background: var(--glass-border);
   }
 }
+
+/* Admin: Add user panel tabs */
+.admin-add-user-tabs {
+  display: flex;
+  gap: 0.5rem;
+}
+.admin-add-user-tabs .btn {
+  padding: 0.5rem 1rem;
+  border-radius: var(--radius);
+  border: 1px solid var(--glass-border);
+  background: var(--sidebar-bg);
+  cursor: pointer;
+  font-size: 0.9375rem;
+}
+.admin-add-user-tabs .btn:hover {
+  background: var(--bg-sky);
+}
+.admin-add-user-tabs .btn[aria-pressed="true"] {
+  background: var(--active-bg);
+  border-color: var(--active);
+  color: var(--active);
+}
+.admin-add-user-form .activity-form .settings-input {
+  margin-bottom: 0.75rem;
+}
+.admin-add-user-form .activity-form .settings-label {
+  display: block;
+  margin-bottom: 0.25rem;
+  font-weight: 500;
+}

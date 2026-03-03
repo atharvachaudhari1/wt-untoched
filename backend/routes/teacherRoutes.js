@@ -8,9 +8,16 @@ const { authorizeRoles } = require('../middleware/roleMiddleware');
 const sessionController = require('../controllers/sessionController');
 const attendanceController = require('../controllers/attendanceController');
 const announcementController = require('../controllers/announcementController');
+const teacherController = require('../controllers/teacherController');
 
 router.use(authMiddleware);
 router.use(authorizeRoles('teacher'));
+
+// Assigned students (mentees) and their progress
+router.get('/students', teacherController.getAssignedStudents);
+router.get('/students/:studentId/progress', teacherController.getStudentProgress);
+router.get('/students/:studentId/notepad', teacherController.getStudentNotepad);
+router.put('/students/:studentId/notepad', teacherController.updateStudentNotepad);
 
 // Sessions
 router.get('/sessions', sessionController.listSessions);

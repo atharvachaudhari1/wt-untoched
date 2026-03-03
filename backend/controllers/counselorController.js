@@ -1,7 +1,7 @@
 /**
  * Counselor (Concilar) API: view all students and their full progress + follow-up.
  */
-const { StudentProfile, Session, Attendance, StudentActivity, CourseAttendance } = require('../models');
+const { StudentProfile, Session, Attendance, StudentActivity, CourseAttendance, StudentNotepad } = require('../models');
 
 /**
  * GET /counselor/students - List all students (same as admin). Query: department, year, limit.
@@ -66,6 +66,50 @@ exports.getStudentDetail = async (req, res, next) => {
       courseAttendance,
       followUp,
     });
+  } catch (err) {
+    next(err);
+  }
+};
+
+/**
+ * GET /counselor/students/:studentId/notepad - Get notepad for any student.
+ */
+exports.getStudentNotepad = async (req, res, next) => {
+  try {
+    const { studentId } = req.params;
+    const student = await StudentProfile.findById(studentId);
+    if (!student) {
+      return res.status(404).json({ success: false, message: 'Student not found.' });
+    }
+    let notepad = await StudentNotepad.findOne({ student: studentId });
+    if (!notepad) {
+      notepad = await StudentNotepad.create({ student: studentId, content: '' });
+    }
+    res.json({ success: true, notepad: { content: notepad.content || '', updatedAt: notepad.updatedAt } });
+  } catch (err) {
+    next(err);
+  }
+};
+
+/**
+ * PUT /counselor/students/:studentId/notepad - Update notepad for any student. Body: { content }.
+ */
+exports.updateStudentNotepad = async (req, res, next) => {
+  try {
+    const { studentId } = req.params;
+    const student = await StudentProfile.findById(studentId);
+    if (!student) {
+      return res.status(404).json({ success: false, message: 'Student not found.' });
+    }
+    const content = typeof req.body.content === 'string' ? req.body.content.trim() : '';
+    let notepad = await StudentNotepad.findOne({ student: studentId });
+    if (!notepad) {
+      notepad = await StudentNotepad.create({ student: studentId, content });
+    } else {
+      notepad.content = content;
+      await notepad.save();
+    }
+    res.json({ success: true, notepad: { content: notepad.content || '', updatedAt: notepad.updatedAt } });
   } catch (err) {
     next(err);
   }

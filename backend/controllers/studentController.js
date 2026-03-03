@@ -1,7 +1,7 @@
 /**
  * Student API: mentor, upcoming sessions, Meet link, attendance, notes, announcements.
  */
-const { Session, StudentProfile, TeacherProfile, Attendance, StudentActivity, CourseAttendance } = require('../models');
+const { Session, StudentProfile, TeacherProfile, Attendance, StudentActivity, CourseAttendance, StudentNotepad } = require('../models');
 const { calculateMentoringHealthScore } = require('../utils/mentoringHealthScore');
 
 exports.dashboard = async (req, res, next) => {
@@ -169,6 +169,25 @@ exports.getMentoringNotes = async (req, res, next) => {
       notes: s.mentoringNotes,
     }));
     res.json({ success: true, notes });
+  } catch (err) {
+    next(err);
+  }
+};
+
+/**
+ * GET /student/notepad - Own notepad (read-only for student). One notepad per student.
+ */
+exports.getNotepad = async (req, res, next) => {
+  try {
+    const profile = await StudentProfile.findOne({ user: req.user.id });
+    if (!profile) {
+      return res.json({ success: true, notepad: { content: '' } });
+    }
+    let notepad = await StudentNotepad.findOne({ student: profile._id });
+    if (!notepad) {
+      notepad = await StudentNotepad.create({ student: profile._id, content: '' });
+    }
+    res.json({ success: true, notepad: { content: notepad.content || '', updatedAt: notepad.updatedAt } });
   } catch (err) {
     next(err);
   }
