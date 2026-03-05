@@ -88,7 +88,12 @@ exports.updateSession = async (req, res, next) => {
     }
     const allowed = ['title', 'description', 'students', 'scheduledAt', 'duration', 'meetLink', 'isLive', 'liveSessionStatus', 'status', 'mentoringNotes'];
     allowed.forEach((key) => {
-      if (req.body[key] !== undefined) session[key] = req.body[key];
+      if (req.body[key] === undefined) return;
+      if (key === 'scheduledAt') {
+        session.scheduledAt = req.body[key] ? new Date(req.body[key]) : session.scheduledAt;
+        return;
+      }
+      session[key] = req.body[key];
     });
     await session.save();
     const populated = await Session.findById(session._id)
@@ -225,6 +230,29 @@ exports.listSessions = async (req, res, next) => {
       .limit(Number(limit))
       .populate('teacher', 'user department designation')
       .populate('students', 'user rollNo department');
+
+    // If teacher has no sessions at all, auto-create a default "Mentoring" session so dashboard is never empty
+    if (req.user.role === 'teacher' && sessions.length === 0 && !forNotes) {
+      const teacherProfile = await TeacherProfile.findOne({ user: req.user.id });
+      if (teacherProfile) {
+        const defaultSessionAt = new Date();
+        defaultSessionAt.setDate(defaultSessionAt.getDate() + 7);
+        defaultSessionAt.setHours(10, 0, 0, 0);
+        await Session.create({
+          title: 'Mentoring',
+          teacher: teacherProfile._id,
+          students: [],
+          scheduledAt: defaultSessionAt,
+          duration: 45,
+          createdBy: req.user.id,
+        });
+        sessions = await Session.find({ teacher: teacherProfile._id })
+          .sort({ scheduledAt: -1 })
+          .limit(Number(limit))
+          .populate('teacher', 'user department designation')
+          .populate('students', 'user rollNo department');
+      }
+    }
 
     if (req.user.role === 'teacher' && forNotes === 'true' && sessions.length > 0) {
       const teacherProfile = await TeacherProfile.findOne({ user: req.user.id });

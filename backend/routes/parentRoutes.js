@@ -12,6 +12,7 @@ router.use(authMiddleware);
 router.use(authorizeRoles('parent'));
 
 router.get('/linked-students', parentController.linkedStudents);
+router.get('/child-progress', parentController.getChildProgress);
 router.get('/student/:studentId/schedule', parentController.studentSchedule);
 router.get('/student/:studentId/attendance', parentController.studentAttendance);
 router.get('/student/:studentId/mentor-remarks', parentController.mentorRemarks);

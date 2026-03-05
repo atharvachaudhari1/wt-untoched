@@ -9,6 +9,7 @@ router.get('/contacts', chatController.getContacts);
 router.get('/conversations', chatController.getConversations);
 router.post('/conversations', chatController.getOrCreateConversation);
 router.get('/conversations/:id', chatController.getConversationWithMessages);
+router.delete('/conversations/:id/messages', chatController.clearConversationMessages);
 router.post('/conversations/:id/messages', chatController.sendMessage);
 router.patch('/messages/:id/read', chatController.markMessageRead);
 

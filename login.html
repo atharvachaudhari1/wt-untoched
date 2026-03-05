@@ -8,6 +8,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css">
+  <script>window.ECS_API_BASE = window.ECS_API_BASE || (location.hostname === 'localhost' || location.hostname === '127.0.0.1' ? 'http://localhost:3000/api' : '');</script>
   <style>
     .login-page { min-height: 100vh; display: flex; align-items: center; justify-content: center; background: linear-gradient(160deg, #f8fafc 0%, #e8ecf7 50%, #e0e7ff 100%); font-family: 'Poppins', sans-serif; }
     .login-card { background: rgba(255,255,255,0.9); backdrop-filter: blur(12px); border-radius: 24px; padding: 2.5rem; box-shadow: 0 12px 40px rgba(0,0,0,0.1); width: 100%; max-width: 400px; border: 1px solid rgba(255,255,255,0.6); }
@@ -32,7 +33,7 @@
     </div>
     <h1>Sign in</h1>
     <p>Enter your credentials to access the dashboard.</p>
-    <p style="font-size: 0.8rem; color: #64748b; margin-bottom: 1rem;">Students: <strong>rollno@ecs.edu</strong>, password = roll number. Teachers: <strong>slug@ecs.edu</strong>, password = <strong>*********</strong>. Concilar: counselor@ecs.edu / counselor123. Admin: admin@ecs.edu / ********.</p>
+    <p style="font-size: 0.8rem; color: #64748b; margin-bottom: 1rem;">Students: <strong>rollno@ecs.edu</strong>, password = roll number. Teachers: <strong>slug@ecs.edu</strong>, password = <strong>*********</strong>. Parents: <strong>child's roll number@parent.edu</strong> (e.g. 10524@parent.edu), password = <strong>parent123</strong>. Concilar: counselor@ecs.edu / counselor123. Admin: admin@ecs.edu / ********.</p>
     <form id="login-form">
       <label for="email">Email</label>
       <input type="email" id="email" name="email" required placeholder="you@college.edu" autocomplete="email">

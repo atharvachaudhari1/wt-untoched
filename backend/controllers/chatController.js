@@ -240,3 +240,15 @@ exports.markMessageRead = async (req, res, next) => {
     next(err);
   }
 };
+
+/** Delete all messages in a conversation (clear chat). User must be a participant. */
+exports.clearConversationMessages = async (req, res, next) => {
+  try {
+    const conv = await Conversation.findOne({ _id: req.params.id, participants: req.user._id });
+    if (!conv) return res.status(404).json({ success: false, message: 'Conversation not found.' });
+    await Message.deleteMany({ conversation: conv._id });
+    res.json({ success: true, message: 'Chat cleared.' });
+  } catch (err) {
+    next(err);
+  }
+};

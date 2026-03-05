@@ -51,6 +51,18 @@ exports.createUser = async (req, res, next) => {
       });
       profileId = profile._id;
       profileModel = 'TeacherProfile';
+      // Auto-create a default "Mentoring" session so the new teacher sees My sessions immediately
+      const defaultSessionAt = new Date();
+      defaultSessionAt.setDate(defaultSessionAt.getDate() + 7);
+      defaultSessionAt.setHours(10, 0, 0, 0);
+      await Session.create({
+        title: 'Mentoring',
+        teacher: profile._id,
+        students: [],
+        scheduledAt: defaultSessionAt,
+        duration: 45,
+        createdBy: user._id,
+      });
     } else if (role === 'parent' && profileData) {
       const profile = await ParentProfile.create({
         user: user._id,
@@ -72,7 +84,34 @@ exports.createUser = async (req, res, next) => {
 };
 
 /**
+ * Admin: update a user's email. :userId = User id. Body: { newEmail }.
+ */
+exports.updateUserEmail = async (req, res, next) => {
+  try {
+    const { userId } = req.params;
+    const newEmail = req.body && req.body.newEmail;
+    const trimmed = newEmail && String(newEmail).trim().toLowerCase();
+    if (!trimmed) {
+      return res.status(400).json({ success: false, message: 'newEmail is required.' });
+    }
+    const user = await User.findById(userId);
+    if (!user) return res.status(404).json({ success: false, message: 'User not found.' });
+    const existing = await User.findOne({ email: trimmed, _id: { $ne: userId } });
+    if (existing) {
+      return res.status(400).json({ success: false, message: 'That email is already in use by another account.' });
+    }
+    user.email = trimmed;
+    await user.save();
+    const updated = await User.findById(userId).select('-password');
+    res.json({ success: true, user: updated, message: 'Email updated.' });
+  } catch (err) {
+    next(err);
+  }
+};
+
+/**
  * Assign mentor to student. Body: studentId (StudentProfile id), mentorId (TeacherProfile id).
+ * Removes student from previous mentor's assignedStudents so they only appear under the new mentor.
  */
 exports.assignMentor = async (req, res, next) => {
   try {
@@ -85,6 +124,15 @@ exports.assignMentor = async (req, res, next) => {
     if (!student) return res.status(404).json({ success: false, message: 'Student not found.' });
     if (!teacher) return res.status(404).json({ success: false, message: 'Teacher not found.' });
 
+    const previousMentorId = student.mentor && student.mentor.toString();
+    const newMentorId = mentorId.toString();
+
+    if (previousMentorId && previousMentorId !== newMentorId) {
+      await TeacherProfile.findByIdAndUpdate(previousMentorId, {
+        $pull: { assignedStudents: student._id }
+      });
+    }
+
     student.mentor = mentorId;
     await student.save();
     const alreadyAssigned = teacher.assignedStudents.some(
@@ -95,6 +143,35 @@ exports.assignMentor = async (req, res, next) => {
       await teacher.save();
     }
     res.json({ success: true, message: 'Mentor assigned.', student, mentor: teacher });
+  } catch (err) {
+    next(err);
+  }
+};
+
+/**
+ * Sync mentor assignments: remove students from teachers' assignedStudents when
+ * the student's mentor is a different teacher. Fixes cases where a student was
+ * reassigned but not removed from the previous mentor's list.
+ * POST /admin/sync-mentor-assignments
+ */
+exports.syncMentorAssignments = async (req, res, next) => {
+  try {
+    const teachers = await TeacherProfile.find({ assignedStudents: { $exists: true, $ne: [] } });
+    let removed = 0;
+    for (const teacher of teachers) {
+      const list = (teacher.assignedStudents || []).map((id) => id.toString());
+      if (list.length === 0) continue;
+      const students = await StudentProfile.find({ _id: { $in: teacher.assignedStudents } }).select('mentor');
+      const teacherIdStr = teacher._id.toString();
+      const toRemove = students
+        .filter((s) => !s.mentor || s.mentor.toString() !== teacherIdStr)
+        .map((s) => s._id);
+      if (toRemove.length > 0) {
+        await TeacherProfile.findByIdAndUpdate(teacher._id, { $pull: { assignedStudents: { $in: toRemove } } });
+        removed += toRemove.length;
+      }
+    }
+    res.json({ success: true, message: 'Sync complete.', removedFromWrongMentors: removed });
   } catch (err) {
     next(err);
   }

@@ -166,6 +166,7 @@
     },
     admin: {
       createUser: function (body) { return request('POST', '/admin/users', body); },
+      updateUserEmail: function (userId, body) { return request('PATCH', '/admin/users/' + encodeURIComponent(userId) + '/email', body); },
       deleteStudent: function (studentId) { return request('DELETE', '/admin/students/' + encodeURIComponent(studentId)); },
       deleteTeacher: function (teacherId) { return request('DELETE', '/admin/teachers/' + encodeURIComponent(teacherId)); },
       students: function (query) {
@@ -192,6 +193,9 @@
       },
       assignMentor: function (studentId, mentorId) {
         return request('POST', '/admin/assign-mentor', { studentId: studentId, mentorId: mentorId });
+      },
+      syncMentorAssignments: function () {
+        return request('POST', '/admin/sync-mentor-assignments');
       },
       activities: function (query) {
         var q = query || {};
@@ -253,6 +257,13 @@
     academicUpdates: {
       list: function () { return request('GET', '/academic-updates'); }
     },
+    parent: {
+      linkedStudents: function () { return request('GET', '/parent/linked-students'); },
+      getChildProgress: function () { return request('GET', '/parent/child-progress'); },
+      studentSchedule: function (studentId) { return request('GET', '/parent/student/' + encodeURIComponent(studentId) + '/schedule'); },
+      studentAttendance: function (studentId) { return request('GET', '/parent/student/' + encodeURIComponent(studentId) + '/attendance'); },
+      studentAcademicUpdates: function (studentId) { return request('GET', '/parent/student/' + encodeURIComponent(studentId) + '/academic-updates'); }
+    },
     chat: {
       contacts: function () { return request('GET', '/chat/contacts'); },
       conversations: function () { return request('GET', '/chat/conversations'); },
@@ -267,6 +278,7 @@
         return request('GET', path);
       },
       sendMessage: function (conversationId, content) { return request('POST', '/chat/conversations/' + conversationId + '/messages', { content: content }); },
+      clearChat: function (conversationId) { return request('DELETE', '/chat/conversations/' + conversationId + '/messages'); },
       markMessageRead: function (messageId) { return request('PATCH', '/chat/messages/' + messageId + '/read'); }
     }
   };

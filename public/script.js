@@ -94,7 +94,6 @@
   var navAdminMentors = document.getElementById('nav-admin-mentors');
   var navAdminActivities = document.getElementById('nav-admin-activities');
   var navAdminUpdates = document.getElementById('nav-admin-updates');
-  var navAdminStudentProgress = document.getElementById('nav-admin-student-progress');
   var navAdminAddUser = document.getElementById('nav-admin-add-user');
   var navCounselor = document.getElementById('nav-counselor');
   function isAdminUser() {
@@ -106,7 +105,6 @@
   if (isAdminUser() && navAdminAddUser) { navAdminAddUser.style.display = 'flex'; navAdminAddUser.style.visibility = 'visible'; }
   if (isAdminUser() && navAdminActivities) { navAdminActivities.style.display = 'flex'; navAdminActivities.style.visibility = 'visible'; }
   if (isAdminUser() && navAdminUpdates) { navAdminUpdates.style.display = 'flex'; navAdminUpdates.style.visibility = 'visible'; }
-  if (isAdminUser() && navAdminStudentProgress) { navAdminStudentProgress.style.display = 'flex'; navAdminStudentProgress.style.visibility = 'visible'; }
   if (navCounselor && user && user.role === 'counselor') { navCounselor.style.display = 'none'; navCounselor.setAttribute('aria-hidden', 'true'); }
   var navNotepad = document.getElementById('nav-notepad');
   if (navNotepad && user && (user.role === 'teacher' || user.role === 'counselor' || user.role === 'student')) { navNotepad.style.display = 'flex'; navNotepad.style.visibility = 'visible'; }
@@ -127,6 +125,25 @@
     var navProgressTab = document.getElementById('nav-progress');
     if (navProgressTab) { navProgressTab.style.display = 'none'; navProgressTab.setAttribute('aria-hidden', 'true'); }
   }
+  if (user && user.role === 'parent') {
+    var navSessionsP = document.querySelector('.sidebar-nav .nav-item[data-page="sessions"]');
+    var navMentorsP = document.querySelector('.sidebar-nav .nav-item[data-page="mentors"]');
+    var navProgressP = document.querySelector('.sidebar-nav .nav-item[data-page="progress"]');
+    var navNotepadP = document.querySelector('.sidebar-nav .nav-item[data-page="notepad"]');
+    var navChatP = document.querySelector('.sidebar-nav .nav-item[data-page="chat"]');
+    if (navSessionsP) { navSessionsP.style.display = 'none'; navSessionsP.setAttribute('aria-hidden', 'true'); }
+    if (navMentorsP) { navMentorsP.style.display = 'none'; navMentorsP.setAttribute('aria-hidden', 'true'); }
+    if (navProgressP) {
+      navProgressP.style.display = 'flex';
+      navProgressP.style.visibility = 'visible';
+      navProgressP.removeAttribute('aria-hidden');
+      var label = navProgressP.querySelector('.nav-label');
+      if (label) label.textContent = 'Child progress';
+    }
+    if (navNotepadP) { navNotepadP.style.display = 'none'; navNotepadP.setAttribute('aria-hidden', 'true'); }
+    if (navChatP) { navChatP.style.display = 'none'; navChatP.setAttribute('aria-hidden', 'true'); }
+    showPanel('mentoring');
+  }
 
   function showPanel(pageId) {
     contentPanels.forEach(function (p) {
@@ -139,7 +156,6 @@
     if (navAdminAddUser) navAdminAddUser.classList.toggle('active', pageId === 'admin-add-user');
     if (navAdminActivities) navAdminActivities.classList.toggle('active', pageId === 'admin-activities');
     if (navAdminUpdates) navAdminUpdates.classList.toggle('active', pageId === 'admin-updates');
-    if (navAdminStudentProgress) navAdminStudentProgress.classList.toggle('active', pageId === 'progress');
     if (navCounselor) navCounselor.classList.toggle('active', pageId === 'counselor');
     if (pageId === 'sessions') loadSessionsPanel();
     if (pageId === 'mentors') loadMentorsPanel();
@@ -399,19 +415,30 @@
     if (!tbody || typeof ECS_API === 'undefined' || !user) return;
 
     if (user.role === 'teacher') {
-      if (hintEl) hintEl.textContent = 'Set a Meet link for each session; students will see it on their dashboard.';
+      if (hintEl) hintEl.textContent = 'Set a Meet link for each session; students will see it on their dashboard. You can edit date and duration and click Save to update.';
       if (thead) thead.innerHTML = '<tr><th>Session</th><th>Date</th><th>Duration</th><th>Students</th><th>Meet link</th><th>Action</th></tr>';
       ECS_API.teacher.sessions()
         .then(function (data) {
           var sessions = data.sessions || [];
           if (!sessions.length) {
-            tbody.innerHTML = '<tr><td colspan="6" class="text-muted">No sessions yet.</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="6" class="text-muted">No sessions yet. A default session is created when you are added as a teacher.</td></tr>';
             return;
+          }
+          function toDatetimeLocal(d) {
+            if (!d) return '';
+            var date = new Date(d);
+            var y = date.getFullYear();
+            var m = String(date.getMonth() + 1).padStart(2, '0');
+            var day = String(date.getDate()).padStart(2, '0');
+            var h = String(date.getHours()).padStart(2, '0');
+            var min = String(date.getMinutes()).padStart(2, '0');
+            return y + '-' + m + '-' + day + 'T' + h + ':' + min;
           }
           tbody.innerHTML = sessions.map(function (s) {
             var sid = (s._id && s._id.toString()) ? s._id.toString().replace(/"/g, '&quot;') : '';
-            var dateStr = s.scheduledAt ? new Date(s.scheduledAt).toLocaleString() : '—';
-            var durationStr = (s.duration != null) ? (s.duration + ' min') : '—';
+            var dateValue = toDatetimeLocal(s.scheduledAt);
+            var durationVal = (s.duration != null && s.duration !== '') ? Number(s.duration) : 45;
+            if (durationVal < 5 || durationVal > 120) durationVal = 45;
             var students = s.students || [];
             var studentNames = students.map(function (st) {
               if (st && st.user && (st.user.name || st.user.email)) return st.user.name || st.user.email;
@@ -423,31 +450,39 @@
             var titleSafe = (s.title || '—').replace(/</g, '&lt;').replace(/"/g, '&quot;');
             return '<tr data-session-id="' + sid + '">' +
               '<td>' + titleSafe + '</td>' +
-              '<td>' + dateStr + '</td>' +
-              '<td>' + durationStr + '</td>' +
+              '<td><input type="datetime-local" class="settings-input session-date-input" data-session-id="' + sid + '" value="' + dateValue + '" style="min-width: 180px;" /></td>' +
+              '<td><input type="number" min="5" max="120" class="settings-input session-duration-input" data-session-id="' + sid + '" value="' + durationVal + '" style="width: 80px;" /> min</td>' +
               '<td>' + (studentsStr.length > 40 ? studentsStr.slice(0, 40) + '…' : studentsStr).replace(/</g, '&lt;') + '</td>' +
               '<td><input type="url" class="form-control session-meet-link-input" placeholder="https://meet.google.com/..." value="' + currentLink + '" data-session-id="' + sid + '" style="min-width: 200px;" /></td>' +
-              '<td><button type="button" class="btn btn-sm btn-primary save-meet-link-btn" data-session-id="' + sid + '">Save link</button></td></tr>';
+              '<td><button type="button" class="btn btn-sm btn-primary save-meet-link-btn" data-session-id="' + sid + '">Save</button></td></tr>';
           }).join('');
           tbody.querySelectorAll('.save-meet-link-btn').forEach(function (btn) {
             btn.addEventListener('click', function () {
               var id = btn.getAttribute('data-session-id');
               var row = btn.closest('tr');
-              var input = row ? row.querySelector('.session-meet-link-input') : null;
-              var link = input ? input.value.trim() : '';
-              if (!id) return;
+              if (!row || !id) return;
+              var dateInput = row.querySelector('.session-date-input');
+              var durationInput = row.querySelector('.session-duration-input');
+              var linkInput = row.querySelector('.session-meet-link-input');
+              var dateVal = dateInput ? dateInput.value : '';
+              var durationNum = durationInput ? parseInt(durationInput.value, 10) : 45;
+              if (isNaN(durationNum) || durationNum < 5) durationNum = 5;
+              if (durationNum > 120) durationNum = 120;
+              var link = linkInput ? linkInput.value.trim() : '';
+              var payload = { meetLink: link || undefined, isLive: !!link, duration: durationNum };
+              if (dateVal) payload.scheduledAt = new Date(dateVal).toISOString();
               btn.disabled = true;
               btn.textContent = 'Saving...';
-              ECS_API.teacher.updateSession(id, { meetLink: link || undefined, isLive: !!link })
+              ECS_API.teacher.updateSession(id, payload)
                 .then(function () {
                   btn.textContent = 'Saved';
                   btn.disabled = false;
-                  setTimeout(function () { btn.textContent = 'Save link'; }, 2000);
+                  setTimeout(function () { btn.textContent = 'Save'; }, 2000);
                 })
                 .catch(function () {
                   btn.textContent = 'Error';
                   btn.disabled = false;
-                  setTimeout(function () { btn.textContent = 'Save link'; }, 2000);
+                  setTimeout(function () { btn.textContent = 'Save'; }, 2000);
                 });
             });
           });
@@ -902,9 +937,58 @@
     setProgressStats(0, 0, 0, 0);
     setTrendBars([0, 0, 0, 0, 0, 0]);
 
+    var isParent = user && user.role === 'parent';
+    if (isParent) {
+      if (adminPicker) {
+        adminPicker.classList.remove('hidden');
+        adminPicker.setAttribute('aria-hidden', 'false');
+        var pickerSelectWrap = adminPicker.querySelector('.admin-progress-select-wrap');
+        var pickerLoadBtn = document.getElementById('admin-progress-load-btn');
+        if (pickerSelectWrap) pickerSelectWrap.style.display = 'none';
+        if (pickerLoadBtn) pickerLoadBtn.style.display = 'none';
+        var pickerTitle = adminPicker.querySelector('.panel-title');
+        if (pickerTitle) pickerTitle.textContent = "My child's progress";
+      }
+      if (activitySection) activitySection.style.display = 'none';
+      if (progressTitle) progressTitle.textContent = "My child's progress";
+      var nameEl = document.getElementById('admin-progress-student-name');
+      var courseTbody = document.getElementById('progress-course-attendance-tbody');
+      if (courseTbody) courseTbody.innerHTML = '<tr><td colspan="4" class="text-muted">Loading…</td></tr>';
+      if (typeof ECS_API !== 'undefined' && ECS_API.parent && ECS_API.parent.getChildProgress) {
+        ECS_API.parent.getChildProgress().then(function (data) {
+          if (nameEl && data.student && data.student.user) {
+            nameEl.textContent = 'Showing: ' + (data.student.user.name || '') + ' — ' + (data.student.rollNo || '');
+          }
+          renderProgressFromData(data.attendance || [], data.approvedActivities || []);
+          var list = (data.courseAttendance || []);
+          var ct = document.getElementById('progress-course-attendance-tbody');
+          if (ct) {
+            if (!list.length) ct.innerHTML = '<tr><td colspan="4" class="text-muted">No course attendance records.</td></tr>';
+            else ct.innerHTML = list.map(function (c) {
+              var name = (c.courseName || c.courseCode || '').replace(/</g, '&lt;');
+              var attended = c.attended != null ? c.attended : '—';
+              var total = c.totalLectures != null ? c.totalLectures : '—';
+              var pct = c.percentage != null ? (Math.round(c.percentage) + '%') : '—';
+              return '<tr><td>' + name + '</td><td>' + attended + '</td><td>' + total + '</td><td>' + pct + '</td></tr>';
+            }).join('');
+          }
+          showProgressViewerFollowUp(data.followUp || []);
+        }).catch(function (err) {
+          setProgressStats(0, 0, 0, 0);
+          setTrendBars([0, 0, 0, 0, 0, 0]);
+          loadProgressAttendanceTable([], []);
+          if (nameEl) nameEl.textContent = '';
+          var ct = document.getElementById('progress-course-attendance-tbody');
+          if (ct) ct.innerHTML = '<tr><td colspan="4" class="text-muted">Could not load progress.</td></tr>';
+          hideProgressViewerFollowUp();
+          alert(err.message || 'Could not load child progress.');
+        });
+      }
+      return;
+    }
+
     var isAdmin = (function () {
       if (user && (user.role === 'admin' || (user.role && String(user.role).toLowerCase() === 'admin'))) return true;
-      if (navAdminStudentProgress && navAdminStudentProgress.style.display === 'flex') return true;
       return false;
     })();
     var isCounselor = user && user.role === 'counselor';
@@ -1269,6 +1353,7 @@
   var chatThread = document.getElementById('chat-thread');
   var chatThreadTitle = document.getElementById('chat-thread-title');
   var chatBackBtn = document.getElementById('chat-back-btn');
+  var chatClearBtn = document.getElementById('chat-clear-btn');
   var chatLayout = document.getElementById('chat-layout');
   var chatMessages = document.getElementById('chat-messages');
   var chatSendForm = document.getElementById('chat-send-form');
@@ -1556,6 +1641,26 @@
 
   if (chatBackBtn) chatBackBtn.addEventListener('click', closeChatConversation);
 
+  if (chatClearBtn) {
+    chatClearBtn.addEventListener('click', function () {
+      if (!currentChatConversationId || typeof ECS_API === 'undefined') return;
+      if (!confirm('Clear all messages in this chat? This cannot be undone.')) return;
+      ECS_API.chat.clearChat(currentChatConversationId)
+        .then(function () {
+          if (chatMessages) chatMessages.innerHTML = '<p class="text-muted">No messages yet. Say hello!</p>';
+          var conv = chatConversations.find(function (c) { return (c._id && c._id.toString()) === currentChatConversationId; });
+          if (conv) {
+            conv.lastMessage = null;
+            conv.lastMessageAt = null;
+            renderChatConversationsList();
+          }
+        })
+        .catch(function (err) {
+          alert(err && err.message ? err.message : 'Failed to clear chat.');
+        });
+    });
+  }
+
   if (chatNewBtn) {
     chatNewBtn.addEventListener('click', function (e) {
       e.stopPropagation();
@@ -1791,8 +1896,10 @@
     if (typeof ECS_API === 'undefined' || !user || user.role !== 'admin') return;
     var tabStudent = document.getElementById('admin-add-user-tab-student');
     var tabTeacher = document.getElementById('admin-add-user-tab-teacher');
+    var tabChangeEmail = document.getElementById('admin-add-user-tab-change-email');
     var formStudent = document.getElementById('admin-add-user-form-student');
     var formTeacher = document.getElementById('admin-add-user-form-teacher');
+    var formChangeEmail = document.getElementById('admin-add-user-form-change-email');
     var formStudentEl = document.getElementById('admin-create-student-form');
     var formTeacherEl = document.getElementById('admin-create-teacher-form');
     var msgStudent = document.getElementById('admin-create-student-message');
@@ -1806,19 +1913,36 @@
     tabStudent.addEventListener('click', function () {
       formStudent.style.display = '';
       formTeacher.style.display = 'none';
+      if (formChangeEmail) formChangeEmail.style.display = 'none';
       tabStudent.setAttribute('aria-pressed', 'true');
       tabTeacher.setAttribute('aria-pressed', 'false');
+      if (tabChangeEmail) tabChangeEmail.setAttribute('aria-pressed', 'false');
       if (msgStudent) msgStudent.textContent = '';
       if (msgTeacher) msgTeacher.textContent = '';
     });
     tabTeacher.addEventListener('click', function () {
       formStudent.style.display = 'none';
       formTeacher.style.display = '';
+      if (formChangeEmail) formChangeEmail.style.display = 'none';
       tabStudent.setAttribute('aria-pressed', 'false');
       tabTeacher.setAttribute('aria-pressed', 'true');
+      if (tabChangeEmail) tabChangeEmail.setAttribute('aria-pressed', 'false');
       if (msgStudent) msgStudent.textContent = '';
       if (msgTeacher) msgTeacher.textContent = '';
     });
+    if (tabChangeEmail && formChangeEmail) {
+      tabChangeEmail.addEventListener('click', function () {
+        formStudent.style.display = 'none';
+        formTeacher.style.display = 'none';
+        formChangeEmail.style.display = '';
+        tabStudent.setAttribute('aria-pressed', 'false');
+        tabTeacher.setAttribute('aria-pressed', 'false');
+        tabChangeEmail.setAttribute('aria-pressed', 'true');
+        if (msgStudent) msgStudent.textContent = '';
+        if (msgTeacher) msgTeacher.textContent = '';
+        loadAdminChangeEmailPanel();
+      });
+    }
 
     if (formStudentEl) {
       formStudentEl.addEventListener('submit', function (e) {
@@ -2002,9 +2126,111 @@
       });
   }
 
+  function loadAdminChangeEmailPanel() {
+    var tbody = document.getElementById('admin-change-email-tbody');
+    var searchInput = document.getElementById('admin-change-email-search');
+    if (!tbody || typeof ECS_API === 'undefined' || !user || user.role !== 'admin') return;
+    tbody.innerHTML = '<tr><td colspan="5" class="text-muted">Loading...</td></tr>';
+    if (searchInput) searchInput.value = '';
+    Promise.all([ECS_API.admin.students(), ECS_API.admin.teachers()])
+      .then(function (results) {
+        var students = results[0].students || [];
+        var teachers = results[1].teachers || [];
+        var list = [];
+        students.forEach(function (s) {
+          if (s.user && s.user._id) {
+            list.push({
+              userId: s.user._id.toString(),
+              name: (s.user.name || '—'),
+              email: (s.user.email || '—'),
+              role: 'student'
+            });
+          }
+        });
+        teachers.forEach(function (t) {
+          if (t.user && t.user._id) {
+            list.push({
+              userId: t.user._id.toString(),
+              name: (t.user.name || '—'),
+              email: (t.user.email || '—'),
+              role: 'teacher'
+            });
+          }
+        });
+        window._adminChangeEmailFullList = list;
+
+        function renderChangeEmailRows(rows) {
+          if (!rows.length) {
+            tbody.innerHTML = '<tr><td colspan="5" class="text-muted">No users match your search.</td></tr>';
+            return;
+          }
+          tbody.innerHTML = rows.map(function (u) {
+            var nameSafe = (u.name || '—').replace(/</g, '&lt;').replace(/"/g, '&quot;');
+            var emailSafe = (u.email || '—').replace(/</g, '&lt;').replace(/"/g, '&quot;');
+            var userIdSafe = (u.userId || '').replace(/"/g, '&quot;');
+            return '<tr data-user-id="' + userIdSafe + '">' +
+              '<td>' + nameSafe + '</td>' +
+              '<td>' + emailSafe + '</td>' +
+              '<td>' + (u.role || '—') + '</td>' +
+              '<td><input type="email" class="settings-input change-email-new-input" placeholder="New email" data-user-id="' + userIdSafe + '" style="min-width: 12rem;"></td>' +
+              '<td><button type="button" class="btn-continue btn-sm change-email-save-btn" data-user-id="' + userIdSafe + '">Save</button></td></tr>';
+          }).join('');
+          tbody.querySelectorAll('.change-email-save-btn').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+              var userId = btn.getAttribute('data-user-id');
+              var row = btn.closest('tr');
+              var input = row ? row.querySelector('.change-email-new-input') : null;
+              var newEmail = input ? input.value.trim() : '';
+              if (!userId || !newEmail) {
+                alert('Please enter a new email.');
+                return;
+              }
+              btn.disabled = true;
+              btn.textContent = 'Saving...';
+              ECS_API.admin.updateUserEmail(userId, { newEmail: newEmail })
+                .then(function () {
+                  btn.textContent = 'Saved';
+                  btn.disabled = false;
+                  if (typeof loadAdminChangeEmailPanel === 'function') loadAdminChangeEmailPanel();
+                })
+                .catch(function (err) {
+                  btn.textContent = 'Save';
+                  btn.disabled = false;
+                  alert(err.message || 'Failed to update email.');
+                });
+            });
+          });
+        }
+
+        renderChangeEmailRows(list);
+
+        if (searchInput) {
+          searchInput.oninput = function () {
+            var q = (searchInput.value || '').trim().toLowerCase();
+            var full = window._adminChangeEmailFullList || [];
+            if (!q) {
+              renderChangeEmailRows(full);
+              return;
+            }
+            var filtered = full.filter(function (u) {
+              var name = (u.name || '').toLowerCase();
+              var email = (u.email || '').toLowerCase();
+              var role = (u.role || '').toLowerCase();
+              return name.indexOf(q) !== -1 || email.indexOf(q) !== -1 || role.indexOf(q) !== -1;
+            });
+            renderChangeEmailRows(filtered);
+          };
+        }
+      })
+      .catch(function () {
+        tbody.innerHTML = '<tr><td colspan="5" class="text-muted">Could not load users.</td></tr>';
+      });
+  }
+
   function loadAdminMentorsPanel() {
     if (typeof ECS_API === 'undefined' || user.role !== 'admin') return;
     var tbody = document.getElementById('admin-teachers-tbody');
+    var syncBtn = document.getElementById('admin-sync-mentors-btn');
 
     function renderTeachersTable(teachers) {
       if (!tbody) return;
@@ -2017,7 +2243,7 @@
         var name = ((t.user && t.user.name) || '—').replace(/</g, '&lt;');
         var email = ((t.user && t.user.email) || '—').replace(/</g, '&lt;');
         var dept = (t.department || '—').replace(/</g, '&lt;');
-        var des = (t.designation || '—').replace(/</g, '&lt;');
+        var des = (t.designation || 'Mentor').replace(/</g, '&lt;');
         var list = (t.assignedStudents || []);
         var count = list.length;
         var names = list.slice(0, 3).map(function (s) { return (s.user && s.user.name) || s.rollNo || '—'; }).join(', ');
@@ -2038,6 +2264,29 @@
     }).catch(function () {
       if (tbody) tbody.innerHTML = '<tr><td colspan="6" class="text-muted">Could not load teachers.</td></tr>';
     });
+
+    if (syncBtn) {
+      syncBtn.addEventListener('click', function () {
+        syncBtn.disabled = true;
+        syncBtn.textContent = 'Syncing...';
+        ECS_API.admin.syncMentorAssignments()
+          .then(function (data) {
+            var removed = (data && data.removedFromWrongMentors) || 0;
+            if (removed > 0) alert('Sync complete. Removed ' + removed + ' student(s) from wrong mentor lists.');
+            return ECS_API.admin.teachers();
+          })
+          .then(function (data) {
+            renderTeachersTable(data.teachers);
+          })
+          .catch(function (err) {
+            alert(err && err.message ? err.message : 'Sync failed.');
+          })
+          .finally(function () {
+            syncBtn.disabled = false;
+            syncBtn.textContent = 'Sync mentor assignments';
+          });
+      });
+    }
   }
 
   function loadAdminActivitiesPanel() {

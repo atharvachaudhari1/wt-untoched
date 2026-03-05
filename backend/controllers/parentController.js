@@ -1,7 +1,7 @@
 /**
  * Parent API - read-only: linked students schedule, attendance, mentor remarks, academic updates.
  */
-const { StudentProfile, Session, Attendance, ParentProfile } = require('../models');
+const { StudentProfile, Session, Attendance, ParentProfile, StudentActivity, CourseAttendance } = require('../models');
 
 async function getLinkedStudentIds(userId) {
   const parent = await ParentProfile.findOne({ user: userId }).select('linkedStudents');
@@ -93,6 +93,53 @@ exports.academicUpdates = async (req, res, next) => {
       student: profile,
       recentAttendanceSummary: { total: recentAtt.length, present: presentCount },
     });
+  } catch (err) {
+    next(err);
+  }
+};
+
+/**
+ * GET /parent/child-progress - Progress for the parent's linked child (first linked student).
+ * Same response shape as admin/teacher getStudentProgress.
+ */
+exports.getChildProgress = async (req, res, next) => {
+  try {
+    const ids = await getLinkedStudentIds(req.user.id);
+    if (!ids || ids.length === 0) {
+      return res.status(404).json({ success: false, message: 'No linked student found.' });
+    }
+    const studentId = ids[0];
+    const student = await StudentProfile.findById(studentId)
+      .populate('user', 'name email')
+      .populate('mentor', 'user department')
+      .populate('mentor.user', 'name');
+    if (!student) {
+      return res.status(404).json({ success: false, message: 'Student not found.' });
+    }
+    const limit = Number(req.query.limit) || 50;
+    const [attendance, approvedActivities, courseAttendance, followUpSessions] = await Promise.all([
+      Attendance.find({ student: studentId })
+        .sort({ createdAt: -1 })
+        .populate('session', 'title scheduledAt')
+        .limit(limit),
+      StudentActivity.find({ student: studentId, status: 'approved' })
+        .sort({ startDate: -1 })
+        .limit(50),
+      CourseAttendance.find({ student: studentId }).sort({ courseCode: 1 }).lean(),
+      Session.find({ students: studentId, mentoringNotes: { $exists: true, $ne: null, $ne: '' } })
+        .sort({ scheduledAt: -1 })
+        .limit(50)
+        .populate({ path: 'teacher', select: 'user', populate: { path: 'user', select: 'name' } })
+        .select('title scheduledAt mentoringNotes'),
+    ]);
+    const followUp = followUpSessions.map((s) => ({
+      sessionId: s._id,
+      title: s.title,
+      scheduledAt: s.scheduledAt,
+      mentoringNotes: s.mentoringNotes,
+      mentorName: (s.teacher && s.teacher.user && s.teacher.user.name) ? s.teacher.user.name : null,
+    }));
+    res.json({ success: true, student, attendance, approvedActivities, courseAttendance, followUp });
   } catch (err) {
     next(err);
   }

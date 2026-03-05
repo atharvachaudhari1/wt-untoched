@@ -16,7 +16,9 @@ router.use(authMiddleware);
 router.use(authorizeRoles('admin'));
 
 router.post('/users', adminController.createUser);
+router.patch('/users/:userId/email', adminController.updateUserEmail);
 router.post('/assign-mentor', adminController.assignMentor);
+router.post('/sync-mentor-assignments', adminController.syncMentorAssignments);
 router.get('/students', adminController.getAllStudents);
 router.delete('/students/:studentId', adminController.deleteStudent);
 router.get('/students/:studentId/progress', adminController.getStudentProgress);

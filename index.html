@@ -8,6 +8,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css">
+  <script>window.ECS_API_BASE = window.ECS_API_BASE || (location.hostname === 'localhost' || location.hostname === '127.0.0.1' ? 'http://localhost:3000/api' : '');</script>
 </head>
 <body>
   <div class="app">
@@ -110,14 +111,6 @@
             <line x1="16" y1="17" x2="8" y2="17"/>
           </svg>
           <span class="nav-label">Academic updates</span>
-        </a>
-        <a href="#" class="nav-item nav-item--admin" id="nav-admin-student-progress" data-page="progress" aria-label="Student progress" style="display: none;">
-          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <line x1="18" y1="20" x2="18" y2="10"/>
-            <line x1="12" y1="20" x2="12" y2="4"/>
-            <line x1="6" y1="20" x2="6" y2="14"/>
-          </svg>
-          <span class="nav-label">Student progress</span>
         </a>
         <a href="#" class="nav-item nav-item--counselor" id="nav-counselor" data-page="counselor" aria-label="Concilar" style="display: none;">
           <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -281,11 +274,13 @@
         <div class="content-panel" id="panel-sessions" data-page="sessions">
           <h1 class="page-title">My sessions</h1>
           <p class="text-muted" id="sessions-panel-hint" style="margin-bottom: 1rem;"></p>
-          <div class="table-wrap">
-            <table class="sessions-table" id="sessions-table-full">
-              <thead id="sessions-thead-full"><tr><th>Session</th><th>Mentor</th><th>Duration</th><th>Date</th><th>Join</th></tr></thead>
-              <tbody id="sessions-tbody-full"></tbody>
-            </table>
+          <div class="card">
+            <div class="table-wrap">
+              <table class="sessions-table" id="sessions-table-full">
+                <thead id="sessions-thead-full"><tr><th>Session</th><th>Mentor</th><th>Duration</th><th>Date</th><th>Join</th></tr></thead>
+                <tbody id="sessions-tbody-full"></tbody>
+              </table>
+            </div>
           </div>
         </div>
 
@@ -592,6 +587,7 @@
                 <div class="chat-thread-header">
                   <button type="button" class="chat-back-btn" id="chat-back-btn" aria-label="Back to conversations">←</button>
                   <span class="chat-thread-title" id="chat-thread-title"></span>
+                  <button type="button" class="chat-clear-btn" id="chat-clear-btn" aria-label="Clear chat" title="Clear chat">Clear chat</button>
                 </div>
                 <div class="chat-messages" id="chat-messages"></div>
                 <form class="chat-send-form" id="chat-send-form">
@@ -606,6 +602,7 @@
         <!-- Panel: Settings -->
         <div class="content-panel" id="panel-settings" data-page="settings">
           <h1 class="page-title">Settings</h1>
+          <div class="card">
           <div class="settings-content">
             <section class="settings-section">
               <h2 class="settings-section-title">Profile</h2>
@@ -660,36 +657,39 @@
               <p class="text-muted">ECS Mentoring Portal — Connect with your mentor, view sessions, and stay updated.</p>
             </section>
           </div>
+          </div>
         </div>
 
         <!-- Panel: Admin – Activity requests (approve/reject hackathon, workshop, etc.) -->
         <div class="content-panel" id="panel-admin-activities" data-page="admin-activities">
           <h1 class="page-title">Activity requests</h1>
           <p class="text-muted" style="margin-bottom: 1rem;">Students submit requests for hackathons, workshops, etc. on college days. Approve so the date appears in their attendance. Approved and rejected items stay as records; use Delete to remove.</p>
-          <div style="margin-bottom: 1rem;">
-            <label for="admin-activities-rollno-search" class="settings-label">Search by roll number</label>
-            <div style="display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap;">
-              <input type="text" id="admin-activities-rollno-search" class="settings-input" placeholder="e.g. 10523 or partial roll no" style="max-width: 14rem;">
-              <button type="button" class="btn-continue" id="admin-activities-search-btn">Search</button>
-              <button type="button" class="btn-continue" id="admin-activities-clear-search" style="background: #666;">Clear</button>
+          <div class="card">
+            <div class="admin-activities-search" style="margin-bottom: 1rem;">
+              <label for="admin-activities-rollno-search" class="settings-label">Search by roll number</label>
+              <div class="btn-group" style="margin-top: 0.5rem;">
+                <input type="text" id="admin-activities-rollno-search" class="settings-input" placeholder="e.g. 10523 or partial roll no" style="max-width: 14rem;">
+                <button type="button" class="btn-continue" id="admin-activities-search-btn">Search</button>
+                <button type="button" class="btn-continue" id="admin-activities-clear-search" style="background: #666;">Clear</button>
+              </div>
             </div>
-          </div>
-          <div class="table-wrap">
-            <table class="sessions-table" id="admin-activities-table">
-              <thead>
-                <tr>
-                  <th style="width: 2.5rem;"><input type="checkbox" id="admin-activities-select-all" title="Select all"></th>
-                  <th>Student (Roll no)</th><th>Type</th><th>Title</th><th>Date</th><th>Status</th><th>Actions</th>
-                </tr>
-              </thead>
-              <tbody id="admin-activities-tbody">
-                <tr><td colspan="7" class="text-muted">Loading...</td></tr>
-              </tbody>
-            </table>
-          </div>
-          <div style="margin-top: 0.5rem; display: flex; gap: 0.5rem; flex-wrap: wrap;">
-            <button type="button" class="btn-continue" id="admin-activities-delete-selected" style="background: #c62828;">Delete selected</button>
-            <button type="button" class="btn-continue" id="admin-activities-delete-all" style="background: #c62828;">Delete all activity requests</button>
+            <div class="table-wrap">
+              <table class="sessions-table" id="admin-activities-table">
+                <thead>
+                  <tr>
+                    <th style="width: 2.5rem;"><input type="checkbox" id="admin-activities-select-all" title="Select all"></th>
+                    <th>Student (Roll no)</th><th>Type</th><th>Title</th><th>Date</th><th>Status</th><th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="admin-activities-tbody">
+                  <tr><td colspan="7" class="text-muted">Loading...</td></tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="btn-group" style="margin-top: 1rem;">
+              <button type="button" class="btn-continue" id="admin-activities-delete-selected" style="background: #c62828;">Delete selected</button>
+              <button type="button" class="btn-continue" id="admin-activities-delete-all" style="background: #c62828;">Delete all activity requests</button>
+            </div>
           </div>
         </div>
 
@@ -723,9 +723,11 @@
           <div class="admin-add-user-tabs" style="margin-bottom: 1.5rem;">
             <button type="button" class="btn btn-sm" id="admin-add-user-tab-student" aria-pressed="true">Add student</button>
             <button type="button" class="btn btn-sm" id="admin-add-user-tab-teacher" aria-pressed="false">Add teacher</button>
+            <button type="button" class="btn btn-sm" id="admin-add-user-tab-change-email" aria-pressed="false">Change email</button>
           </div>
           <div id="admin-add-user-form-student" class="admin-add-user-form">
-            <h2 class="panel-title" style="margin-bottom: 1rem;">New student</h2>
+            <div class="card">
+              <h2 class="panel-title" style="margin-bottom: 1rem;">New student</h2>
             <form id="admin-create-student-form" class="activity-form" style="max-width: 28rem;">
               <label for="admin-student-name" class="settings-label">Full name</label>
               <input type="text" id="admin-student-name" class="settings-input" placeholder="e.g. John Doe" required maxlength="120">
@@ -736,15 +738,17 @@
               <label for="admin-student-rollno" class="settings-label">Roll number</label>
               <input type="text" id="admin-student-rollno" class="settings-input" placeholder="e.g. 10523" required>
               <label for="admin-student-department" class="settings-label">Department</label>
-              <input type="text" id="admin-student-department" class="settings-input" placeholder="e.g. CSE" value="CSE">
+              <input type="text" id="admin-student-department" class="settings-input" placeholder="e.g. ECS" value="ECS">
               <label for="admin-student-year" class="settings-label">Year (1–5)</label>
               <input type="number" id="admin-student-year" class="settings-input" placeholder="e.g. 2" min="1" max="5" step="1">
               <p id="admin-create-student-message" class="settings-message" style="margin-top: 0.5rem;"></p>
               <button type="submit" class="btn-continue" id="admin-create-student-btn">Create student</button>
             </form>
+            </div>
           </div>
           <div id="admin-add-user-form-teacher" class="admin-add-user-form" style="display: none;">
-            <h2 class="panel-title" style="margin-bottom: 1rem;">New teacher</h2>
+            <div class="card">
+              <h2 class="panel-title" style="margin-bottom: 1rem;">New teacher</h2>
             <form id="admin-create-teacher-form" class="activity-form" style="max-width: 28rem;">
               <label for="admin-teacher-name" class="settings-label">Full name</label>
               <input type="text" id="admin-teacher-name" class="settings-input" placeholder="e.g. Dr. Jane Smith" required maxlength="120">
@@ -755,20 +759,48 @@
               <label for="admin-teacher-employeeid" class="settings-label">Employee ID (optional)</label>
               <input type="text" id="admin-teacher-employeeid" class="settings-input" placeholder="e.g. T001">
               <label for="admin-teacher-department" class="settings-label">Department</label>
-              <input type="text" id="admin-teacher-department" class="settings-input" placeholder="e.g. CSE" required>
+              <input type="text" id="admin-teacher-department" class="settings-input" placeholder="e.g. ECS" required>
               <label for="admin-teacher-designation" class="settings-label">Designation (optional)</label>
               <input type="text" id="admin-teacher-designation" class="settings-input" placeholder="e.g. Assistant Professor">
               <p id="admin-create-teacher-message" class="settings-message" style="margin-top: 0.5rem;"></p>
               <button type="submit" class="btn-continue" id="admin-create-teacher-btn">Create teacher</button>
             </form>
+            </div>
+          </div>
+          <div id="admin-add-user-form-change-email" class="admin-add-user-form" style="display: none;">
+            <div class="card">
+              <h2 class="panel-title" style="margin-bottom: 1rem;">Change email</h2>
+            <p class="text-muted" style="margin-bottom: 1rem;">Update login email for any student or teacher. They will use the new email to sign in.</p>
+            <div style="margin-bottom: 1rem;">
+              <label for="admin-change-email-search" class="settings-label">Search</label>
+              <input type="text" id="admin-change-email-search" class="settings-input" placeholder="Search by name, email, or role..." style="max-width: 20rem;" aria-label="Search users">
+            </div>
+            <div class="table-wrap">
+              <table class="sessions-table" id="admin-change-email-table">
+                <thead>
+                  <tr>
+                    <th>Name</th>
+                    <th>Current email</th>
+                    <th>Role</th>
+                    <th>New email</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+                <tbody id="admin-change-email-tbody">
+                  <tr><td colspan="5" class="text-muted">Loading...</td></tr>
+                </tbody>
+              </table>
+            </div>
+            </div>
           </div>
           <h2 class="panel-title" style="margin-top: 2rem;">Existing students</h2>
           <p class="text-muted" style="margin-bottom: 0.75rem;">Delete a student to remove their account and all related data.</p>
-          <div style="margin-bottom: 0.75rem;">
-            <label for="admin-existing-students-search" class="settings-label">Search</label>
-            <input type="text" id="admin-existing-students-search" class="settings-input" placeholder="Search by name, email, or roll number..." style="max-width: 20rem;">
-          </div>
-          <div class="table-wrap">
+          <div class="card">
+            <div style="margin-bottom: 0.75rem;">
+              <label for="admin-existing-students-search" class="settings-label">Search</label>
+              <input type="text" id="admin-existing-students-search" class="settings-input" placeholder="Search by name, email, or roll number..." style="max-width: 20rem;">
+            </div>
+            <div class="table-wrap">
             <table class="sessions-table" id="admin-existing-students-table">
               <thead>
                 <tr>
@@ -785,8 +817,10 @@
               </tbody>
             </table>
           </div>
+          </div>
           <h2 class="panel-title" style="margin-top: 1.5rem;">Existing teachers</h2>
           <p class="text-muted" style="margin-bottom: 0.75rem;">Delete a teacher to remove their account. Their assigned students will be unassigned and their sessions removed.</p>
+          <div class="card">
           <div class="table-wrap">
             <table class="sessions-table" id="admin-existing-teachers-table">
               <thead>
@@ -803,29 +837,35 @@
               </tbody>
             </table>
           </div>
+          </div>
         </div>
 
         <!-- Panel: Admin – Assign mentors to students (teacher-centric) -->
         <div class="content-panel" id="panel-admin-mentors" data-page="admin-mentors">
           <h1 class="page-title">Assign mentors to students</h1>
           <p class="text-muted" style="margin-bottom: 1.25rem;">Under each teacher, click &quot;Assign students&quot; to choose which students have that mentor.</p>
-          <h2 class="panel-title">All teachers (mentors)</h2>
-          <div class="table-wrap">
-            <table class="sessions-table" id="admin-teachers-table">
-              <thead>
-                <tr>
-                  <th>Name</th>
-                  <th>Email</th>
-                  <th>Department</th>
-                  <th>Designation</th>
-                  <th>Assigned students</th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
-              <tbody id="admin-teachers-tbody">
-                <tr><td colspan="6" class="text-muted">Loading...</td></tr>
-              </tbody>
-            </table>
+          <p style="margin-bottom: 1rem;">
+            <button type="button" class="btn-continue btn-continue--secondary" id="admin-sync-mentors-btn" title="Remove students from wrong mentors (e.g. after reassignment)">Sync mentor assignments</button>
+          </p>
+          <div class="card">
+            <h2 class="panel-title">All teachers (mentors)</h2>
+            <div class="table-wrap">
+              <table class="sessions-table" id="admin-teachers-table">
+                <thead>
+                  <tr>
+                    <th>Name</th>
+                    <th>Email</th>
+                    <th>Department</th>
+                    <th>Designation</th>
+                    <th>Assigned students</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="admin-teachers-tbody">
+                  <tr><td colspan="6" class="text-muted">Loading...</td></tr>
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
       </div>
